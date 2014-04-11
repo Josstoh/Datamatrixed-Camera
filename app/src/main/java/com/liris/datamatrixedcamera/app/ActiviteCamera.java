@@ -1,6 +1,7 @@
 package com.liris.datamatrixedcamera.app;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -8,6 +9,7 @@ import android.os.Build;
 import android.os.PowerManager;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.Surface;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -21,6 +23,7 @@ import android.view.LayoutInflater;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.ViewGroup.LayoutParams;
+import android.widget.AdapterView;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
@@ -39,7 +42,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     private Camera camera;
     private Activity activity;
     private ListView listView = null;
-    private View dialog = null;
+    private View vueDialog = null;
     private PowerManager.WakeLock wakeLock;
     private String TAG = "datamatrixedcamera";
     private SoundPool soundPool;
@@ -122,17 +125,6 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             }
         });
 
-        //LayoutInflater inflater = LayoutInflater.from(mPreview.context);
-        //this.dialog = inflater.inflate(R.layout.dialog_choix_taille,null);
-        //AlertDialog.Builder builder = new AlertDialog.Builder(mPreview.context);
-        //builder.setTitle("Choisissez la taille").setView(dialog).show();
-
-        //LayoutInflater controlInflater = LayoutInflater.from(context);
-        //View viewControl = controlInflater.inflate(R.layout.controles, null);
-        //ViewGroup.LayoutParams layoutParamsControl
-        //        = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-        //        ViewGroup.LayoutParams.MATCH_PARENT);
-        //((Activity) context).addContentView(viewControl, layoutParamsControl);
     }
 
     @Override
@@ -164,16 +156,22 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     @Override
     public boolean onOptionsItemSelected (MenuItem item)
     {
+        final Camera.Parameters parameters = camera.getParameters();
+        HashMap<String,String> mapSize;
+        ArrayList<HashMap<String,String>> listItem = new ArrayList();
+
+        // Creation alertDialog
+        final AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        builder.setTitle("Choisissez la taille");
+        LayoutInflater inflater = LayoutInflater.from(activity);
+        final View vueDialog = inflater.inflate(R.layout.dialog_choix_taille,null);
+        this.listView = (ListView) vueDialog.findViewById(R.id.listView);
+
+
         switch(item.getItemId())
         {
             case R.id.menu_taillePhoto:
-
-                Camera.Parameters parameters = camera.getParameters();
-                HashMap<String,String> mapSize;
-                ArrayList<HashMap<String,String>> listItem = new ArrayList();
-
                 List<Camera.Size> pictureSizes = parameters.getSupportedPictureSizes();
-
                 for (Camera.Size i : pictureSizes)
                 {
                     mapSize = new HashMap();
@@ -181,33 +179,94 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                     mapSize.put("largeur",String.valueOf(i.width));
                     listItem.add(mapSize);
                 }
-                // Creation alertDialog
-                AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-                builder.setTitle("Choisissez la taille");
-                LayoutInflater inflater = LayoutInflater.from(activity);
-                View dialog = inflater.inflate(R.layout.dialog_choix_taille,null);
-                this.listView = (ListView) dialog.findViewById(R.id.listView);
 
                 try{
                     listView.setAdapter(new SimpleAdapter(activity, listItem, R.layout.affichage_size,
-                            new String[] {"hauteur","largeur"},new int[] {R.id.hauteur,R.id.largeur} ));
+                            new String[] {"largeur","hauteur"},new int[] {R.id.largeur,R.id.hauteur} ));
                 }
                 catch (Exception e) {
                     Boolean b = (listView != null);
                     Log.w("Dialog taille photo",e.getMessage()+""+b.toString());
                     return true;
                 }
-                builder.setView(dialog);
-                builder.show();
 
+                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                        HashMap<String,String> item = (HashMap<String,String>) listView.getItemAtPosition(position);
+                        Log.i("Item choisit", item.get("hauteur") + " x " + item.get("largeur"));
+                        parameters.setPictureSize(Integer.valueOf(item.get("largeur")),Integer.valueOf(item.get("hauteur")));
+                        camera.stopPreview();
+                        camera.setParameters(parameters);
+                        camera.startPreview();
+                        //dialog.dissmiss();
 
-                Camera.Size previewSize = pictureSizes.get(1);
-                parameters.setPictureSize(previewSize.width, previewSize.height);
-                camera.setParameters(parameters);
-                camera.startPreview();
+                    }
+                });
+                builder.setView(vueDialog);
+                Dialog dialog = builder.create();
+                dialog.show();
                 return true;
+
+            case R.id.menu_taillePreview:
+                List<Camera.Size> previewSizes = parameters.getSupportedPreviewSizes();
+                for (Camera.Size i : previewSizes)
+                {
+                    mapSize = new HashMap();
+                    mapSize.put("hauteur",String.valueOf(i.height));
+                    mapSize.put("largeur",String.valueOf(i.width));
+                    listItem.add(mapSize);
+                }
+
+                try{
+                    listView.setAdapter(new SimpleAdapter(activity, listItem, R.layout.affichage_size,
+                            new String[] {"largeur","hauteur"},new int[] {R.id.largeur,R.id.hauteur} ));
+                }
+                catch (Exception e) {
+                    Boolean b = (listView != null);
+                    Log.w("Dialog taille photo",e.getMessage()+""+b.toString());
+                    return true;
+                }
+
+                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                        HashMap<String,String> item = (HashMap<String,String>) listView.getItemAtPosition(position);
+                        parameters.setPreviewSize(Integer.valueOf(item.get("hauteur")),Integer.valueOf(item.get("largeur")));
+                        camera.stopPreview();
+                        camera.setParameters(parameters);
+                        camera.startPreview();
+
+                    }
+                });
+                builder.setView(vueDialog);
+                builder.show();
+                return true;
+
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    public static void setCameraDisplayOrientation(Activity activity,int cameraId, android.hardware.Camera camera) {
+        android.hardware.Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
+        android.hardware.Camera.getCameraInfo(cameraId, info);
+        int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+        int degrees = 0;
+        switch (rotation) {
+            case Surface.ROTATION_0: degrees = 0; break;
+            case Surface.ROTATION_90: degrees = 90; break;
+            case Surface.ROTATION_180: degrees = 180; break;
+            case Surface.ROTATION_270: degrees = 270; break;
+        }
+
+        int result;
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            result = (info.orientation + degrees) % 360;
+            result = (360 - result) % 360;  // compensate the mirror
+        } else {  // back-facing
+            result = (info.orientation - degrees + 360) % 360;
+        }
+        camera.setDisplayOrientation(result);
     }
 
     @Override
@@ -242,6 +301,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
+        camera.stopPreview();
+        setCameraDisplayOrientation(this,Camera.CameraInfo.CAMERA_FACING_BACK,camera);
 
         Camera.Parameters parameters = camera.getParameters();
 
@@ -280,10 +341,10 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             Toast.makeText(activity, test.toString(), 10).show();
             Toast.makeText(activity, s.toString(), 10).show();
 
-            Camera.Size size = camera.getParameters().getPictureSize();
-            int[]photo = convertYUV420_NV21toRGB8888(data,size.width,size.height);
-            //int[] photo = new int[size.height*size.width];
-            //applyGrayScale(photo,data,size.width,size.height);
+            Camera.Size size = camera.getParameters().getPreviewSize();
+            //int[]photo = convertYUV420_NV21toRGB8888(data,size.width,size.height);
+            int[] photo = new int[size.height*size.width*2];
+            applyGrayScale(photo,data,size.width,size.height);
 
             for(int l=50;l<100;l++){
                 for(int c = 50; c<100; c++) {
@@ -294,7 +355,10 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             }
             Bitmap bmp = Bitmap.createBitmap(photo, size.width, size.height, Bitmap.Config.ARGB_8888);
             File fichierPhoto=new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "fichierPhoto.png");
+            if (fichierPhoto.exists())
+                fichierPhoto.delete();
             FileOutputStream out = null;
+
             try {
                 out = new FileOutputStream(fichierPhoto);
                 bmp.compress(Bitmap.CompressFormat.PNG, 90, out);

@@ -1,11 +1,13 @@
 package com.liris.datamatrixedcamera.app;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.os.Build;
 import android.os.PowerManager;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -21,12 +23,12 @@ import android.view.SurfaceView;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.ImageButton;
 import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import android.widget.Toast;
-
-import com.liris.datamatrixedcamera.app.R;
-
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -36,7 +38,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     private SurfaceHolder holder;
     private Camera camera;
     private Activity activity;
-    private ListView listView;
+    private ListView listView = null;
     private View dialog = null;
     private PowerManager.WakeLock wakeLock;
     private String TAG = "datamatrixedcamera";
@@ -121,7 +123,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         });
 
         //LayoutInflater inflater = LayoutInflater.from(mPreview.context);
-        //this.dialog = inflater.inflate(R.layout.dialog_dialog_choix_taille,null);
+        //this.dialog = inflater.inflate(R.layout.dialog_choix_taille,null);
         //AlertDialog.Builder builder = new AlertDialog.Builder(mPreview.context);
         //builder.setTitle("Choisissez la taille").setView(dialog).show();
 
@@ -160,6 +162,55 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     }
 
     @Override
+    public boolean onOptionsItemSelected (MenuItem item)
+    {
+        switch(item.getItemId())
+        {
+            case R.id.menu_taillePhoto:
+
+                Camera.Parameters parameters = camera.getParameters();
+                HashMap<String,String> mapSize;
+                ArrayList<HashMap<String,String>> listItem = new ArrayList();
+
+                List<Camera.Size> pictureSizes = parameters.getSupportedPictureSizes();
+
+                for (Camera.Size i : pictureSizes)
+                {
+                    mapSize = new HashMap();
+                    mapSize.put("hauteur",String.valueOf(i.height));
+                    mapSize.put("largeur",String.valueOf(i.width));
+                    listItem.add(mapSize);
+                }
+                // Creation alertDialog
+                AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+                builder.setTitle("Choisissez la taille");
+                LayoutInflater inflater = LayoutInflater.from(activity);
+                View dialog = inflater.inflate(R.layout.dialog_choix_taille,null);
+                this.listView = (ListView) dialog.findViewById(R.id.listView);
+
+                try{
+                    listView.setAdapter(new SimpleAdapter(activity, listItem, R.layout.affichage_size,
+                            new String[] {"hauteur","largeur"},new int[] {R.id.hauteur,R.id.largeur} ));
+                }
+                catch (Exception e) {
+                    Boolean b = (listView != null);
+                    Log.w("Dialog taille photo",e.getMessage()+""+b.toString());
+                    return true;
+                }
+                builder.setView(dialog);
+                builder.show();
+
+
+                Camera.Size previewSize = pictureSizes.get(1);
+                parameters.setPictureSize(previewSize.width, previewSize.height);
+                camera.setParameters(parameters);
+                camera.startPreview();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
     public void surfaceCreated(SurfaceHolder holder) {
         camera = Camera.open();
         try {
@@ -192,48 +243,9 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
 
-        /*
-		// Creation alertDialog
-        LayoutInflater inflater = LayoutInflater.from(context);
-        View dialog = inflater.inflate(R.layout.dialog_dialog_choix_taille,null);
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Choisissez la taille");
-        builder.setView(findViewById(R.layout.dialog_dialog_choix_taille));
-        builder.show();
-        this.listView = (ListView) findViewById(R.id.listView);
-
-        // Recuperation des tailles dispos
-		*/
         Camera.Parameters parameters = camera.getParameters();
-        /*
-        HashMap<String,String> mapSize;
-        ArrayList<HashMap<String,String>> listItem = new ArrayList();
-        */
+
         List<Camera.Size> previewSizes = parameters.getSupportedPreviewSizes();
-/*
-        for (Camera.Size i : previewSizes)
-        {
-            mapSize = new HashMap();
-            mapSize.put("hauteur",String.valueOf(i.height));
-            mapSize.put("largeur",String.valueOf(i.width));
-            listItem.add(mapSize);
-        }
-
-        List<Integer> l = parameters.getSupportedPreviewFormats();
-        for(Integer i : l)
-        {
-            Log.i("Supported Format",i.toString());
-        }
-        try{
-            listView.setAdapter(new SimpleAdapter(context, listItem, R.layout.affichage_size,
-                    new String[] {"hauteur","largeur"},new int[] {R.id.hauteur,R.id.largeur} ));
-        }
-        catch (Exception e) {
-            Boolean b = (listView != null);
-            Log.w("ERREUR",e.getMessage()+""+b.toString());
-        }
-
-		*/
 
         Camera.Size previewSize = previewSizes.get(1);
         parameters.setPreviewSize(previewSize.width, previewSize.height);
@@ -254,7 +266,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             float volume = actualVolume / maxVolume;
             // Is the sound loaded already?
             if (loaded) {
-                //soundPool.play(soundID, volume, volume, 1, 0, 1f);
+                soundPool.play(idSonPhoto, volume, volume, 1, 0, 1f);
                 Log.e("Test", "Played sound");
             }
 

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<FrameLayout xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:id="@+id/controles"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    tools:context=".ActiviteCamera">
+
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/ivMire"
+        android:layout_gravity="center"
+        android:src="@drawable/mire"
+        android:maxWidth="5dp"
+        android:maxHeight="5dp" />
+
+    <ImageButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/bMenu"
+        android:layout_gravity="bottom|right"
+        android:src="@drawable/abc_ic_menu_moreoverflow_normal_holo_dark" />
+
+    <ImageButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/bPhoto"
+        android:layout_gravity="right|center_vertical"
+        android:src="@drawable/b_photo_custom"
+        android:background="@drawable/b_photo_custom" />
+
+</FrameLayout>

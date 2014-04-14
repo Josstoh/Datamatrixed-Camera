@@ -20,10 +20,13 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
-
 import com.liris.datamatrixedcamera.app.R;
+
+import org.opencv.android.Utils;
+import org.opencv.core.Mat;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -43,13 +46,15 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     private SoundPool soundPool;
     private int idSonPhoto;
     private Boolean loaded = false;
-    private RawCallback callback;
+    private RawCallback callback1;
+    private RawCallback callback2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.activity = this;
-        this.callback = new RawCallback();
+        this.callback1 = new RawCallback();
+        this.callback2 = new RawCallback();
         // Pour mettre en plein écran
         if (Build.VERSION.SDK_INT < 16 || true) {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -96,16 +101,17 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         bPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                camera.takePicture(callback,
+                camera.takePicture(callback1,
                         null,
-                        callback,
+                        callback2,
                         new Camera.PictureCallback() {
 
                             @Override
                             public void onPictureTaken(byte[] photo, Camera camera) {
                                 //new SavePhotoTask().execute(photo);
-                                Toast.makeText(activity, "PHOTO ENREGISTRE", 10).show();
+                                Toast.makeText(activity, "PHOTO ENREGISTREE", 10).show();
                                 Toast.makeText(activity, String.valueOf(photo.length), 10).show();
+                                Log.e("Test", "Picture Taken 2 ");
                                 camera.startPreview();
                             }
                         }
@@ -254,7 +260,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             float volume = actualVolume / maxVolume;
             // Is the sound loaded already?
             if (loaded) {
-                //soundPool.play(soundID, volume, volume, 1, 0, 1f);
+                //soundPool.play(idSonPhoto, volume, volume, 1, 0, 1f);
                 Log.e("Test", "Played sound");
             }
 
@@ -262,6 +268,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
         @Override
         public void onPictureTaken(byte[] data, Camera camera) {
+            Log.e("Test", "Picture Taken");
+            Toast.makeText(activity, "test", 10).show();
             Boolean test = (data!=null);
             Integer s = ((data == null) ? 0 : data.length);
             Toast.makeText(activity, "PHOTO RAW", 10).show();
@@ -269,9 +277,9 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             Toast.makeText(activity, s.toString(), 10).show();
 
             Camera.Size size = camera.getParameters().getPictureSize();
-            int[]photo = convertYUV420_NV21toRGB8888(data,size.width,size.height);
-            //int[] photo = new int[size.height*size.width];
-            //applyGrayScale(photo,data,size.width,size.height);
+            //int[]photo = convertYUV420_NV21toRGB8888(data,size.width,size.height);
+            int[] photo = new int[size.height*size.width];
+            applyGrayScale(photo,data,size.width,size.height);
 
             for(int l=50;l<100;l++){
                 for(int c = 50; c<100; c++) {
@@ -356,5 +364,53 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                 pixels[i] = 0xff000000 | p<<16 | p<<8 | p;
             }
         }
+
+        public Mat getSquare (int [] pixels, int width, int height, int squareSize)
+        {
+            //initialisation des compteurs pour parcourir la nouvelle matrice
+            int linePx = 0;
+            int columnPx = 0;
+
+            // localisation du premier pixel (en haut à gauche) du carré
+            int heightFirstPixel = (height/2) - (squareSize/2);
+            int widthFirstPixel = (width/2) - (squareSize/2);
+
+            //localisation du dernier pixel (en bas à droite) du carré
+            int heightLastPixel = (height/2) + (squareSize/2);
+            int widthLastPixel = (width/2) + (squareSize/2);
+
+            //initialisation d'une matrice Mat (OpenCV)
+            Mat matPixel = new Mat();
+
+            //parcours du tableau de pixel pour récupérer la valeur des pixels constituant le carré
+            for(int l = heightFirstPixel; l<heightLastPixel;l++)
+            {
+                for (int c = widthFirstPixel; c < widthLastPixel; c++)
+                {
+                    int p = l * width + c;
+                    double yPixel = pixels[p];
+                    matPixel.put(linePx,columnPx,yPixel);
+                    columnPx = columnPx + 1;
+
+                }
+                linePx = linePx + 1;
+            }
+
+
+            return matPixel;
+
+        }
+
+        public void displaySquare (Mat matPixel)
+        {
+            // convert to bitmap:
+            Bitmap bm = Bitmap.createBitmap(matPixel.cols(), matPixel.rows(),Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(matPixel, bm);
+
+            // find the imageview and draw it!
+            ImageView iv = (ImageView) findViewById(R.id.apercuCarre);
+            iv.setImageBitmap(bm);
+        }
     }
 }
+

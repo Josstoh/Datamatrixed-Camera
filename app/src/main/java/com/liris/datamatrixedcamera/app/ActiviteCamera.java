@@ -3,6 +3,7 @@ package com.liris.datamatrixedcamera.app;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -26,10 +27,13 @@ import android.view.SurfaceView;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
+
+import com.liris.datamatrixedcamera.app.traitement.ActiviteTraitement;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -113,6 +117,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
         ImageButton bPhoto = (ImageButton) findViewById(R.id.bPhoto);
         ImageButton bMenu = (ImageButton) findViewById(R.id.bMenu);
+        Button bTraitement = (Button) findViewById(R.id.bTraitement);
 
         // Gestion des listeners
         bPhoto.setOnClickListener(new View.OnClickListener() {
@@ -129,6 +134,14 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             @Override
             public void onClick(View view) {
                 activity.openOptionsMenu();
+            }
+        });
+
+        bTraitement.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(activity, ActiviteTraitement.class);
+                startActivity(intent);
             }
         });
 
@@ -335,9 +348,11 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             // Désactiver le son par défaut
             Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
             Camera.getCameraInfo(Camera.CameraInfo.CAMERA_FACING_BACK, info);
-            if(info.canDisableShutterSound)
-                camera.enableShutterSound(false);
-
+            if (Build.VERSION.SDK_INT > 17)
+            {
+                if(info.canDisableShutterSound)
+                    camera.enableShutterSound(false);
+            }
             //Obtenir les tailles actuelles
             Camera.Parameters parametres= camera.getParameters();
             parametres.setJpegQuality(100);

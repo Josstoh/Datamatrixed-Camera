@@ -2,6 +2,7 @@ package com.liris.datamatrixedcamera.app;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -24,23 +25,30 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
+
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Mat;
+import org.opencv.highgui.Highgui;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-
 public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
     private SurfaceView surfaceView;
     private SurfaceHolder holder;
     private Camera camera;
-    private Activity activity;
+    static public Activity activity;
     private ListView listView = null;
     private View vueDialog = null;
     private PowerManager.WakeLock wakeLock;
@@ -49,12 +57,21 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     private int idSonPhoto;
     private Boolean loaded = false;
     private RawCallback callback;
+    private int positionChoixTaillePhoto = -1;
+    private int positionChoixTaillePreview = -1;
+    private Camera.Size choixTaillePhoto = null;
+    private Camera.Size choixTaillePreview = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.activity = this;
         this.callback = new RawCallback();
+
+        if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_2, this, mOpenCVCallBack))
+        {
+            Log.e("TEST", "Cannot connect to OpenCV Manager");
+        }
         // Pour mettre en plein écran
         if (Build.VERSION.SDK_INT < 16 || true) {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -103,18 +120,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             public void onClick(View view) {
                 camera.takePicture(callback,
                         null,
-                        callback,
-                        new Camera.PictureCallback() {
-
-                            @Override
-                            public void onPictureTaken(byte[] photo, Camera camera) {
-                                //new SavePhotoTask().execute(photo);
-                                Toast.makeText(activity, "PHOTO ENREGISTRE", 10).show();
-                                Toast.makeText(activity, String.valueOf(photo.length), 10).show();
-                                camera.startPreview();
-                            }
-                        }
-                );
+                        null,
+                        callback);
             }
         });
 
@@ -126,7 +133,25 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         });
 
     }
-
+    private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                {
+                    Mat Image = Highgui.imread("/image.jpg");
+                    if (Image == null) {
+                        AlertDialog ad = new AlertDialog.Builder(activity).create();
+                        ad.setMessage("Fatal error: can't open /image.jpg!");
+                    }
+                } break;
+                default:
+                {
+                    super.onManagerConnected(status);
+                } break;
+            }
+        }
+    };
     @Override
     protected void onPause() {
 
@@ -157,94 +182,114 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     public boolean onOptionsItemSelected (MenuItem item)
     {
         final Camera.Parameters parameters = camera.getParameters();
-        HashMap<String,String> mapSize;
-        ArrayList<HashMap<String,String>> listItem = new ArrayList();
 
         // Creation alertDialog
         final AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setTitle("Choisissez la taille");
         LayoutInflater inflater = LayoutInflater.from(activity);
-        final View vueDialog = inflater.inflate(R.layout.dialog_choix_taille,null);
-        this.listView = (ListView) vueDialog.findViewById(R.id.listView);
-
-
+        ArrayList<String> listTailles = new ArrayList<String>();
         switch(item.getItemId())
         {
             case R.id.menu_taillePhoto:
                 List<Camera.Size> pictureSizes = parameters.getSupportedPictureSizes();
                 for (Camera.Size i : pictureSizes)
                 {
-                    mapSize = new HashMap();
-                    mapSize.put("hauteur",String.valueOf(i.height));
-                    mapSize.put("largeur",String.valueOf(i.width));
-                    listItem.add(mapSize);
+                   listTailles.add(i.height + " x " + i.width);
                 }
+                final String[] arrayTaillePhoto = new String[listTailles.size()];
+                listTailles.toArray(arrayTaillePhoto);
 
-                try{
-                    listView.setAdapter(new SimpleAdapter(activity, listItem, R.layout.affichage_size,
-                            new String[] {"largeur","hauteur"},new int[] {R.id.largeur,R.id.hauteur} ));
-                }
-                catch (Exception e) {
-                    Boolean b = (listView != null);
-                    Log.w("Dialog taille photo",e.getMessage()+""+b.toString());
-                    return true;
-                }
+                builder.setSingleChoiceItems(arrayTaillePhoto,
+                        positionChoixTaillePhoto,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int position) {
 
-                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                positionChoixTaillePhoto = position;
+
+                                String choix = arrayTaillePhoto[position];
+                                int index = choix.indexOf("x");
+                                int taille = choix.length();
+                                String hauteur = choix.substring(0,index-1);
+                                String largeur = choix.substring(index+2);
+
+                                // Mise à jour des paramètres
+                                Log.i("Item choisit", hauteur + " x " + largeur);
+                                parameters.setPictureSize(Integer.valueOf(largeur),Integer.valueOf(hauteur));
+                                camera.stopPreview();
+                                camera.setParameters(parameters);
+                                camera.startPreview();
+                            }
+                        }).setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
-                    public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
-                        HashMap<String,String> item = (HashMap<String,String>) listView.getItemAtPosition(position);
-                        Log.i("Item choisit", item.get("hauteur") + " x " + item.get("largeur"));
-                        parameters.setPictureSize(Integer.valueOf(item.get("largeur")),Integer.valueOf(item.get("hauteur")));
-                        camera.stopPreview();
-                        camera.setParameters(parameters);
-                        camera.startPreview();
-                        //dialog.dissmiss();
+                    public void onClick(DialogInterface dialogInterface, int i) {
 
                     }
                 });
-                builder.setView(vueDialog);
                 Dialog dialog = builder.create();
                 dialog.show();
                 return true;
 
             case R.id.menu_taillePreview:
+                Camera.Size choixPreview = parameters.getPreviewSize();
                 List<Camera.Size> previewSizes = parameters.getSupportedPreviewSizes();
+                int it = 0;
                 for (Camera.Size i : previewSizes)
                 {
-                    mapSize = new HashMap();
-                    mapSize.put("hauteur",String.valueOf(i.height));
-                    mapSize.put("largeur",String.valueOf(i.width));
-                    listItem.add(mapSize);
+                    listTailles.add(i.height + " x " + i.width);
+                    if(i.equals(choixPreview))
+                        positionChoixTaillePreview = it;
+                    it++;
                 }
+                final String[] arrayTaillePreview = new String[listTailles.size()];
+                listTailles.toArray(arrayTaillePreview);
 
-                try{
-                    listView.setAdapter(new SimpleAdapter(activity, listItem, R.layout.affichage_size,
-                            new String[] {"largeur","hauteur"},new int[] {R.id.largeur,R.id.hauteur} ));
-                }
-                catch (Exception e) {
-                    Boolean b = (listView != null);
-                    Log.w("Dialog taille photo",e.getMessage()+""+b.toString());
-                    return true;
-                }
+                builder.setSingleChoiceItems(arrayTaillePreview,
+                        positionChoixTaillePreview,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int position) {
 
-                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                positionChoixTaillePreview = position;
+
+                                String choix = arrayTaillePreview[position];
+                                int index = choix.indexOf("x");
+                                int taille = choix.length();
+                                String hauteur = choix.substring(0,index-1);
+                                String largeur = choix.substring(index+2);
+
+                                // Mise à jour des paramètres
+                                Log.i("Item choisit", hauteur + " x " + largeur);
+                                parameters.setPreviewSize(Integer.valueOf(largeur),Integer.valueOf(hauteur));
+                                camera.stopPreview();
+                                camera.setParameters(parameters);
+                                camera.startPreview();
+                            }
+                        }).setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
-                    public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
-                        HashMap<String,String> item = (HashMap<String,String>) listView.getItemAtPosition(position);
-                        parameters.setPreviewSize(Integer.valueOf(item.get("hauteur")),Integer.valueOf(item.get("largeur")));
-                        camera.stopPreview();
-                        camera.setParameters(parameters);
-                        camera.startPreview();
+                    public void onClick(DialogInterface dialogInterface, int i) {
 
                     }
                 });
-                builder.setView(vueDialog);
                 builder.show();
                 return true;
 
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("positionChoixTaillePhoto",positionChoixTaillePhoto);
+        outState.putInt("positionChoixTaillePreview",positionChoixTaillePreview);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        //this.positionChoixTaillePreview = savedInstanceState.getInt("positionChoixTaillePreview");
+        //this.positionChoixTaillePhoto = savedInstanceState.getInt("positionChoixTaillePhoto");
     }
 
     public static void setCameraDisplayOrientation(Activity activity,int cameraId, android.hardware.Camera camera) {
@@ -287,6 +332,35 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                     return true;
                 }
             });
+            // Désactiver le son par défaut
+            Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
+            Camera.getCameraInfo(Camera.CameraInfo.CAMERA_FACING_BACK, info);
+            if(info.canDisableShutterSound)
+                camera.enableShutterSound(false);
+
+            //Obtenir les tailles actuelles
+            Camera.Parameters parametres= camera.getParameters();
+            parametres.setJpegQuality(100);
+            int it = 0;
+            for (Camera.Size i : parametres.getSupportedPictureSizes())
+            {
+                if(i.equals(parametres.getPictureSize())){
+                    positionChoixTaillePhoto = it;
+                    break;
+                }
+                it++;
+            }
+            it = 0;
+            for (Camera.Size i : parametres.getSupportedPreviewSizes())
+            {
+                if(i.equals(parametres.getPreviewSize())){
+                    positionChoixTaillePreview = it;
+                    break;
+                }
+                it++;
+            }
+            camera.setParameters(parametres);
+
         } catch (Exception e) {
             camera.release();
             camera = null;
@@ -303,14 +377,6 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
         camera.stopPreview();
         setCameraDisplayOrientation(this,Camera.CameraInfo.CAMERA_FACING_BACK,camera);
-
-        Camera.Parameters parameters = camera.getParameters();
-
-        List<Camera.Size> previewSizes = parameters.getSupportedPreviewSizes();
-
-        Camera.Size previewSize = previewSizes.get(1);
-        parameters.setPreviewSize(previewSize.width, previewSize.height);
-        camera.setParameters(parameters);
         camera.startPreview();
     }
 
@@ -341,35 +407,9 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             Toast.makeText(activity, test.toString(), 10).show();
             Toast.makeText(activity, s.toString(), 10).show();
 
-            Camera.Size size = camera.getParameters().getPreviewSize();
-            //int[]photo = convertYUV420_NV21toRGB8888(data,size.width,size.height);
-            int[] photo = new int[size.height*size.width*2];
-            applyGrayScale(photo,data,size.width,size.height);
-
-            for(int l=50;l<100;l++){
-                for(int c = 50; c<100; c++) {
-                    int p = 640*l+c;
-                    photo[p]=0x80ffffff; // xxRRVVBB
-
-                }
-            }
-            Bitmap bmp = Bitmap.createBitmap(photo, size.width, size.height, Bitmap.Config.ARGB_8888);
-            File fichierPhoto=new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "fichierPhoto.png");
-            if (fichierPhoto.exists())
-                fichierPhoto.delete();
-            FileOutputStream out = null;
-
-            try {
-                out = new FileOutputStream(fichierPhoto);
-                bmp.compress(Bitmap.CompressFormat.PNG, 90, out);
-                Log.i("ActiviteCamera","Photo PNG enregistré");
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                try{
-                    out.close();
-                } catch(Throwable ignore) {}
-            }
+            Camera.Size size = camera.getParameters().getPictureSize();
+            new TacheSauvegardePhoto().execute(data);
+            camera.startPreview();
         }
 
         /**
@@ -427,6 +467,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         public void applyGrayScale(int [] pixels, byte [] data, int width, int height) {
             int p;
             int size = width*height;
+            Log.i("Taille bytes",String.valueOf(data.length));
+            Log.i("Taille donnée",String.valueOf(width)+" x " + String.valueOf(height));
             for(int i = 0; i < size; i++) {
                 p = data[i] & 0xFF;
                 pixels[i] = 0xff000000 | p<<16 | p<<8 | p;

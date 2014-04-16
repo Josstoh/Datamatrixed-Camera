@@ -31,4 +31,12 @@
         android:src="@drawable/b_photo_custom"
         android:background="@drawable/b_photo_custom"/>
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Traitement"
+        android:id="@+id/bTraitement"
+        android:layout_gravity="left|bottom"
+        android:textSize="15dp" />
+
 </FrameLayout>

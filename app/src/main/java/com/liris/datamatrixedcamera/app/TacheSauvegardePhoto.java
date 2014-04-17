@@ -1,6 +1,8 @@
 package com.liris.datamatrixedcamera.app;
 
 import android.app.AlertDialog;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.util.Log;
@@ -28,15 +30,42 @@ class TacheSauvegardePhoto extends AsyncTask<byte[], String, String> {
         {
             Log.e("TEST", "Cannot connect to OpenCV Manager");
         }
-        File fichierPhoto=new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Photo.jpg");
+        File fichierPhoto=new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Photo1.jpg");
 
         if (fichierPhoto.exists()) {
             fichierPhoto.delete();
         }
+        MediaScannerConnection.scanFile(ActiviteCamera.activity,
+                new String[]{fichierPhoto.toString()}, null,new MediaScannerConnection.MediaScannerConnectionClient() {
+                    @Override
+                    public void onMediaScannerConnected() {
+
+                    }
+
+                    @Override
+                    public void onScanCompleted(String path, Uri uri) {
+                        Log.i("ExternalStorage", "Scanned " + path + ":");
+                        Log.i("ExternalStorage", "-> uri=" + uri);
+                    }
+                });
         try {
             FileOutputStream fos=new FileOutputStream(fichierPhoto.getPath());
             fos.write(photo[0]);
             fos.close();
+            MediaScannerConnection.scanFile(ActiviteCamera.activity,
+                    new String[]{fichierPhoto.toString()}, null,new MediaScannerConnection.MediaScannerConnectionClient() {
+                        @Override
+                        public void onMediaScannerConnected() {
+
+                        }
+
+                        @Override
+                        public void onScanCompleted(String path, Uri uri) {
+                            Log.i("ExternalStorage", "Scanned " + path + ":");
+                            Log.i("ExternalStorage", "-> uri=" + uri);
+                        }
+                    });
+
         }
         catch (java.io.IOException e) {
             Log.e("PictureDemo", "Exception in photoCallback", e);

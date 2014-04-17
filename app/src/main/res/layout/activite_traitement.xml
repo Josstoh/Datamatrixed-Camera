@@ -8,26 +8,32 @@
         android:layout_height="wrap_content"
         android:text="Image_Project"
         />
-    <Button android:text="Browse gallery"
-        android:id="@+id/Button01"
+    <Button android:text="Importer l'image"
+        android:id="@+id/bImporterImage"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
     </Button>
 
-    <Button android:text="Zone+GrayScale"
-        android:id="@+id/Button02"
+    <Button android:text="Zoom + noir et blanc"
+        android:id="@+id/bZoomGrayscale"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
     </Button>
 
-    <Button android:text="Auto-Correlation"
-        android:id="@+id/Button04"
+    <Button android:text="Binary (?)"
+        android:id="@+id/bBinary"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
     </Button>
 
     <Button android:text="max-Extraction"
-        android:id="@+id/Button05"
+        android:id="@+id/bExtraction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+    </Button>
+
+    <Button android:text="Profil"
+        android:id="@+id/bProfil"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
     </Button>

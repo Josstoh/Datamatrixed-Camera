@@ -42,6 +42,7 @@ public class ActiviteTraitement extends Activity {
     private Mat submatrice;
     private Mat grayscaleMatrix;
     private Mat autoCorr;
+    private Mat autocseuil;
     private ImageView img;
     private Action action = new Action();
     private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
@@ -72,9 +73,10 @@ public class ActiviteTraitement extends Activity {
         if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_2, this, mOpenCVCallBack)) {
             Log.e("TEST", "Cannot connect to OpenCV Manager");
         }
-        ((Button) findViewById(R.id.Button01))
+        ((Button) findViewById(R.id.bImporterImage))
                 .setOnClickListener(new OnClickListener() {
                     public void onClick(View arg0) {
+                        // On récupère l'image
                         Intent intent = new Intent();
                         intent.setType("image/*");
                         intent.setAction(Intent.ACTION_GET_CONTENT);
@@ -82,10 +84,10 @@ public class ActiviteTraitement extends Activity {
                     }
                 });
 
-        ((Button) findViewById(R.id.Button02))
+        ((Button) findViewById(R.id.bZoomGrayscale))
                 .setOnClickListener(new OnClickListener() {
                     public void onClick(View arg0) {
-
+                        // On la transforme en grayscale et on zoom
                         try {
                             String path = selectedImagePath;
 
@@ -112,7 +114,6 @@ public class ActiviteTraitement extends Activity {
                                 int colEnd = NCs2 + 256;
                                 submatrice = m.submat(rowStart, rowEnd, colStart, colEnd);
                                 // Bitmap img_b;
-                                System.out.println("probleme");
                                 grayscaleMatrix = action.grayScale(submatrice);
                                 Bitmap img_bitmp = Bitmap.createBitmap(submatrice.cols(), submatrice.rows(), Bitmap.Config.ARGB_8888);
                                 Utils.matToBitmap(grayscaleMatrix, img_bitmp);
@@ -130,28 +131,54 @@ public class ActiviteTraitement extends Activity {
                     }
                 });
 
-        ((Button) findViewById(R.id.Button04))
+        ((Button) findViewById(R.id.bBinary))
                 .setOnClickListener(new OnClickListener() {
                     public void onClick(View arg0) {
 
-                        Intent intent1 = new Intent();
-                        intent1.setType("image/*");
-                        intent1.setAction(Intent.ACTION_MAIN);
-                        startActivityForResult(intent1, Binary);
-
+                        // Binary
+                        autoCorr= action.autoCorrelation( grayscaleMatrix);
+                        autoCorr.convertTo(autoCorr, CvType.CV_8UC1);
+                        Bitmap img_bitmp = Bitmap.createBitmap(autoCorr.cols(), autoCorr.rows(),Bitmap.Config.ARGB_8888);
+                        Utils.matToBitmap(autoCorr, img_bitmp);
+                        img.setImageBitmap(img_bitmp);
+                        System.out.println("End");
                     }
                 });
 
-        ((Button) findViewById(R.id.Button05))
+        ((Button) findViewById(R.id.bExtraction))
                 .setOnClickListener(new OnClickListener() {
                     public void onClick(View arg0) {
+                        // Extraction
+                        // Mat x=autoCorr.submat(new org.opencv.core.Rect(150,150,200,200));
+                        Mat x=autoCorr.submat(new org.opencv.core.Rect(0,0,512,512));
+                        //Mat x=autoCorr.submat(new org.opencv.core.Rect(192,192,128,128));
+                        //Mat x=autoCorr.submat(new org.opencv.core.Rect(192,192,320,320));
+                        autocseuil= action.maxExtraction_( autoCorr,512,grayscaleMatrix);
 
-                        Intent intent1 = new Intent();
-                        intent1.setType("image/*");
-                        intent1.setAction(Intent.ACTION_MAIN);
-                        startActivityForResult(intent1, Extraction);
+                        //Mat ess_var=autocseuil.submat(new org.opencv.core.Rect(192,192,128,128));
+                        autocseuil.convertTo(autocseuil, CvType.CV_8UC1);
+                        Bitmap img_bitmp = Bitmap.createBitmap(autocseuil.cols(), autocseuil.rows(),Bitmap.Config.ARGB_8888);
+                        Utils.matToBitmap(autocseuil, img_bitmp);
+                        img.setImageBitmap(img_bitmp);
+                        System.out.println("End");
                     }
                 });
+
+        ((Button) findViewById(R.id.bProfil))
+                .setOnClickListener(new OnClickListener() {
+                    public void onClick(View arg0) {
+                        // Profil
+                        Mat profil= action. profils( autocseuil);
+                        //Mat ess_var=autocseuil.submat(new org.opencv.core.Rect(192,192,128,128));
+                        profil.convertTo(profil, CvType.CV_8UC1);
+                        Bitmap img_bitmp = Bitmap.createBitmap(profil.cols(), profil.rows(),Bitmap.Config.ARGB_8888);
+                        Utils.matToBitmap(profil, img_bitmp);
+                        img.setImageBitmap(img_bitmp);
+                        System.out.println("End");
+                    }
+
+                });
+
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -159,96 +186,21 @@ public class ActiviteTraitement extends Activity {
         Action run = new Action();
 
         if (requestCode == SELECT_PICTURE) {
-            Uri selectedImageUri = data.getData();
-            Log.i("Choix de l'image",selectedImageUri.toString());
-            selectedImagePath = getRealPathFromURI(this,selectedImageUri);
-            Log.i("Choix de l'image","Image Path : " + selectedImagePath);
-            img.destroyDrawingCache();
-            img.setImageURI(selectedImageUri);
-
-        }
-
-
-        if (requestCode == ZONE_PICTURE) {
-
-            try {
-                String path = selectedImagePath;
-                System.out.println("selected image path is " + selectedImagePath);
-                Mat m = Highgui.imread(path);
-                if (m == null) {
-                    Log.i("Start", "--------Image Cannot be Loaded--------");
-                } else {
-                    Log.i("Start", "--------Image Loaded Successfully--------");
-                    System.out.println("je suis dans le code 2 ");
-
-                    Log.i("Paramenres on matrix", "height " + m.height() + " width " + m.width() + " total = " + m.total() + " channels " + m.channels());
-                    int NLs2, NCs2;
-                    int NC = m.width();
-                    int NL = m.height();
-                    System.out.println("line_size " + NL);
-                    System.out.println("colone_size " + NC);
-                    NLs2 = NL / 2;
-                    NCs2 = NC / 2;
-                    int rowStart = NLs2 - 255;
-                    int rowEnd = NLs2 + 256;
-                    int colStart = NCs2 - 255;
-                    int colEnd = NCs2 + 256;
-                    submatrice = m.submat(rowStart, rowEnd, colStart, colEnd);
-                    // Bitmap img_b;
-                    System.out.println("probleme");
-                    grayscaleMatrix = run.grayScale(submatrice);
-                    Bitmap img_bitmp = Bitmap.createBitmap(submatrice.cols(), submatrice.rows(), Bitmap.Config.ARGB_8888);
-                    Utils.matToBitmap(grayscaleMatrix, img_bitmp);
-                    img.setImageBitmap(img_bitmp);
-                }
-            } catch (Exception e) {
-                System.err.print("Error in the code");
-                Log.i("Erreur Grayscale", "Erreur lors de la conversion en grayscale : " + e.getMessage());
+            if(data != null)
+            {
+                Uri selectedImageUri = data.getData();
+                Log.i("Choix de l'image",selectedImageUri.toString());
+                //selectedImagePath = getRealPathFromURI(this,selectedImageUri);
+                selectedImagePath = RechercheFichier.getPath(this,selectedImageUri);
+                Log.i("Choix de l'image","Image Path : " + selectedImagePath);
+                img.destroyDrawingCache();
+                img.setImageURI(selectedImageUri);
             }
-
         }
-
-
-
-
-
-
-
-        if (requestCode == Gray_Scale) {
-            grayscaleMatrix = run.grayScale(submatrice);
-            Bitmap img_bitmp = Bitmap.createBitmap(submatrice.cols(), submatrice.rows(), Bitmap.Config.ARGB_8888);
-            Utils.matToBitmap(grayscaleMatrix, img_bitmp);
-            img.setImageBitmap(img_bitmp);
-        }
-
-        if (requestCode == Binary) {
-            autoCorr = run.autoCorrelation(grayscaleMatrix);
-            autoCorr.convertTo(autoCorr, CvType.CV_8UC1);
-            Bitmap img_bitmp = Bitmap.createBitmap(autoCorr.cols(), autoCorr.rows(), Bitmap.Config.ARGB_8888);
-            Utils.matToBitmap(autoCorr, img_bitmp);
-            img.setImageBitmap(img_bitmp);
-            System.out.println("End");
-        }
-
-
-        if (requestCode == Extraction) {
-            // Mat x=autoCorr.submat(new org.opencv.core.Rect(150,150,200,200));
-            // Mat x=autoCorr.submat(new org.opencv.core.Rect(0,0,512,512));
-            //Mat x=autoCorr.submat(new org.opencv.core.Rect(192,192,128,128));
-            //Mat x=autoCorr.submat(new org.opencv.core.Rect(192,192,320,320));
-            // Mat autocseuil= run.maxExtraction_( autoCorr,512,grayscaleMatrix);
-
-            //Mat ess_var=autocseuil.submat(new org.opencv.core.Rect(192,192,128,128));
-            //autocseuil.convertTo(autocseuil, CvType.CV_8UC1);
-            //Bitmap img_bitmp = Bitmap.createBitmap(autocseuil.cols(), autocseuil.rows(),Bitmap.Config.ARGB_8888);
-            //Utils.matToBitmap(autocseuil, img_bitmp);
-            //img.setImageBitmap(img_bitmp);
-            System.out.println("End");
-        }
-
     }
 
     public String getRealPathFromURI(Context context, Uri contentUri) {
+
         Cursor cursor = null;
         try {
             String[] proj = { MediaStore.Images.Media.DATA };
@@ -270,6 +222,8 @@ public class ActiviteTraitement extends Activity {
             }
 
         }
+
+
     }
 
     public Bary remplir(Mat input, int l, int c) {

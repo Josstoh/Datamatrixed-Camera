@@ -376,6 +376,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             }
             camera.setParameters(parametres);
 
+            Camera.Size tailleThumb= parametres.getJpegThumbnailSize();
+            Log.i("Taille Thumb", ((Integer) tailleThumb.height).toString() + "x" + ((Integer) tailleThumb.height).toString());
         } catch (Exception e) {
             camera.release();
             camera = null;

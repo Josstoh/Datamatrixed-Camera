@@ -16,6 +16,7 @@ import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 
 import android.database.Cursor;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -136,7 +137,7 @@ return auto;
 	 
 	 public Mat maxExtraction (Mat input, int size,Mat grayscaleMatrix)
 	    {
-	    	int FSize=2;   // changement 
+	    	int FSize=4;   // changement 
  	    	
 
 	        
@@ -193,9 +194,8 @@ Mat ess_var=autocseuil.submat(new org.opencv.core.Rect(192,192,128,128));
 	 
 	 public Mat maxExtraction_ (Mat input, int size,Mat grayscaleMatrix)
 	    {
-	    	int FSize=2;   // changement 
+	    	int FSize=3;   // changement 
 	    	
-
 	        
 Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
 	    for (int nl =FSize+1+192; nl<=FSize-1+192+128;nl++)    
@@ -235,7 +235,7 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
 	    	for (int j=0;j<autocseuil.cols();j++) if (autocseuil.get(i, j)[0]==255) nmbzero++;
 	    
 	    System.out.println(" le nombre de zero " +nmbzero );
-  //  gridParameters_(autocseuil,grayscaleMatrix);
+  // gridParameters_(autocseuil,grayscaleMatrix);
    Mat imRedressee =gridParameters(autocseuil,grayscaleMatrix);
 	   //Mat x=accumulation(autocseuil);
 	   //SaveImage(autocseuil);
@@ -298,8 +298,8 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
     public Mat gridParameters(Mat input, Mat grayscaleMatrix)
     {
     	System.out.println("GridParamters");
-    	//Vector<Bary> blob=baryCenter(input);
-        Vector<Bary> blob=rempli_bary();
+    	Vector<Bary> blob=baryCenter(input);
+        //Vector<Bary> blob=rempli_bary();
     	Vector<Bary> directionVerticale =new Vector<Bary>();
     	Vector<Bary> directionHorizontale=new Vector<Bary>();
 
@@ -423,16 +423,18 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
     	
     //Extraction des caract�ristiques sur partie verticale
     	int NbBary=blob.size();
-    	int NbBaryS2=Math.round(NbBary/2);
-    	int deltaMedian=Math.round(NbBary/20);
+    	
+    	int NbBaryS2=   Math.round(NbBary/2)+1;
+    	int deltaMedian=    Math.round(NbBary/20)+1;
 
-    int start=NbBaryS2-deltaMedian;
-    int end=	NbBaryS2+deltaMedian-1;
-    	//System.out.println("start=  "+ start);
-    	//System.out.println("end= "+ end);
-    	double distanceGrilleVerticale=this.mean(directionVerticale.subList(NbBaryS2-deltaMedian, NbBaryS2+deltaMedian+1),3); // a verifier 
+    	System.out.println("NbBary=  "+ NbBary);
+    	System.out.println("start=  "+ NbBaryS2);
+    	System.out.println("end= "+ deltaMedian);
+   double distanceGrilleVerticale=this.mean(directionVerticale.subList(NbBaryS2-deltaMedian-1, NbBaryS2+deltaMedian),3); // a verifier 
 
-     System.out.println("  distanceGrilleVerticale= " +distanceGrilleVerticale);
+
+   
+   System.out.println("  distanceGrilleVerticale= " +distanceGrilleVerticale);
      int  n=0;
     Vector<Bary> newDV =new Vector<Bary>();
     for (int i=0;i<directionVerticale.size();i++){
@@ -444,7 +446,11 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
     }
     int NbNewDV=n;
     int NbNewDVs2=Math.round(NbNewDV/2);
-    deltaMedian=Math.round(NbNewDV/5);
+    deltaMedian=Math.round(NbNewDV/5)+1;
+	System.out.println(" NbNewDVs2=  "+  NbNewDVs2);
+	
+	System.out.println("deltaMedian=  "+ deltaMedian);
+    
     Collections.sort(newDV, new Comparator<Bary>() {
         public int compare(Bary s1, Bary s2) {
            
@@ -453,10 +459,11 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
     });
 
     Vector<Bary>deltaLsort=newDV;
+    Log.i("ACTION",String.valueOf(deltaLsort.size()));
 
 
 
-    double deltaLGrilleVerticale=mean(deltaLsort.subList(NbNewDVs2-deltaMedian, NbNewDVs2+deltaMedian+1),1); // a verifier 
+    double deltaLGrilleVerticale=mean(deltaLsort.subList(NbNewDVs2-deltaMedian-1, NbNewDVs2+deltaMedian),1); // a verifier
     Collections.sort(newDV, new Comparator<Bary>() {
         public int compare(Bary s1, Bary s2) {
            
@@ -465,17 +472,28 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
     });
 
      Vector<Bary>  deltaCsort=  newDV;
-    double deltaCGrilleVerticale=mean(deltaCsort.subList(NbNewDVs2-deltaMedian, NbNewDVs2+deltaMedian+1),2); // a verifier 
+    double deltaCGrilleVerticale=mean(deltaCsort.subList(NbNewDVs2-deltaMedian-1, NbNewDVs2+deltaMedian),2); // a verifier 
 
+  
+
+    
+   // List<Bary> v=deltaCsort.subList(NbNewDVs2-deltaMedian-1, NbNewDVs2+deltaMedian);
+    //for(int i=0;i<v.size();i++){System.out.println(deltaCsort.size()+" " +v.size()+" " + v.get(i).c);}
+    
+    
+    
     System.out.println("  deltaLGrilleVerticale= " +deltaLGrilleVerticale);
     System.out.println("  deltaCGrilleVerticale= " +deltaCGrilleVerticale);
 
     // Extraction des caract�ristiques sur partie horizontale
-    NbBaryS2=Math.round(NbBary/2);
-    deltaMedian=Math.round(NbBary/20);
-     double distanceGrilleHorizontale=mean(directionHorizontale.subList(NbBaryS2-deltaMedian, NbBaryS2+deltaMedian+1),3); // a verifier 
 
-      
+    NbBaryS2=Math.round(NbBary/2)+1;
+    deltaMedian=Math.round(NbBary/20)+1;
+    
+    double distanceGrilleHorizontale=mean(directionHorizontale.subList(NbBaryS2-deltaMedian-1, NbBaryS2+deltaMedian),3); // a verifier 
+
+    System.out.println("  distanceGrilleHorizontale= " +distanceGrilleHorizontale);
+
 
 
     n=0;
@@ -491,8 +509,10 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
 
     int NbNewDH=n;
     int NbNewDHs2=Math.round(NbNewDH/2);
-      deltaMedian=Math.round(NbNewDH/5);
-     
+      deltaMedian=Math.round(NbNewDH/5)+1;
+      System.out.println("  NbNewDHs2= " +NbNewDHs2);
+      System.out.println("  deltaMedian= " +deltaMedian);
+  
       
       
     Collections.sort(newDH, new Comparator<Bary>() {
@@ -504,7 +524,7 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
     deltaLsort= newDH;
      
 
-    double deltaLGrilleHorizontale=mean(deltaLsort.subList(NbNewDHs2-deltaMedian,NbNewDHs2+deltaMedian+1),1);
+    double deltaLGrilleHorizontale=mean(deltaLsort.subList(NbNewDHs2-deltaMedian-1,NbNewDHs2+deltaMedian),1);
       Collections.sort(newDH, new Comparator<Bary>() {
     	    public int compare(Bary s1, Bary s2) {
     	       
@@ -512,7 +532,10 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
     	    }
     	});
     	deltaCsort= newDH;
-     double deltaCGrilleHorizontale=mean(deltaCsort.subList(NbNewDHs2-deltaMedian,NbNewDHs2+deltaMedian+1),2);
+     double deltaCGrilleHorizontale=mean(deltaCsort.subList(NbNewDHs2-deltaMedian-1,NbNewDHs2+deltaMedian),2);
+     System.out.println("  deltaCGrilleHorizontale= " +deltaCGrilleHorizontale);
+
+     System.out.println("  deltaLGrilleHorizontale= " +deltaLGrilleHorizontale);
 
     System.out.println("Transformation de l'image pour redressement du marquage");
     // Transformation de l'image pour redressement du marquage
@@ -553,9 +576,19 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
 
 
     }
+    
+    
+    
+    return imRedressee;
+    }
 
 
+    
+    
+    
+ 
 
+public Mat profils(Mat imRedressee )   {
     System.out.println("Affichage des profils");
 
 
@@ -582,7 +615,7 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
     }
 
     System.out.println("verification");
-    for(int i=0;i<Profils10Colonne.length;i++) System.out.println("signal10 "+Profils10Colonne[i]+" "+imRedressee.col(i).get(i, 0)[0]);
+    for(int i=0;i<Profils10Colonne.length;i++) System.out.println("signal10 "+Profils10Colonne[i]);
 
 
     //Binarisation des variations du marquage.
@@ -592,7 +625,7 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
     double [] signeSignal10= new double[signal10.length];
     int L=signal10.length;
     System.out.println(" the size of signal10 is "+signal10.length );
-    n=0;
+  int   n=0;
     int debut=0;
     if (signal10[n]>0) signeSignal10[n]=1; else  signeSignal10[n]=0;
     int noZone=-1;
@@ -625,7 +658,7 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
         	  signatureProfil[noZone][5]=0; // signe du maxi de la zone
               signatureProfil[noZone][6]=0; // estimation de la qualit� du groupe
         	  debut=n;
-              maxi=Math.abs(signal10[n-1]);
+              maxi=Math.abs(signal10[n]); //mki
     	}
     	
     }
@@ -633,14 +666,14 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
     System.out.println("noZone======"+noZone);
     int NombreZones=noZone;
 
-    noZone=17;
+    noZone=16;//mki
     if (signatureProfil[noZone][5]==1)   noZone++;
 
     // Detection du centre de la zone la plus probable
     // Il faudrait tenir compte de la largeur de chaque zone 
     while (noZone<NombreZones-18)
     {
-    	for (n=10;n<=16;n++)
+    	for (n=9;n<=15;n++)//mki
         {     signatureProfil[noZone][6]=signatureProfil[noZone][6]+signatureProfil[noZone-n][4]+signatureProfil[noZone+n][4];}
        
         noZone=noZone+2;
@@ -655,40 +688,13 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
 
     //calculer le max de la colonne 7
 
-    double max=signatureProfil[0][6];
-    int posmax=0;
-    for (int i=1;i<=NombreZones;i++){
-    if (signatureProfil[i][6]>max){
-    	max=signatureProfil[i][6];
-    	posmax=i;
-    }
-
-    	
-     }
-    System.out.println(" kk "+ max+ "  tt " + posmax);
-    n=posmax;
-    Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(255) ); 
-    int delta=(int) (signatureProfil[n][3]-signatureProfil[n-2][3]);
-    n=posmax;
-    while((delta>7) && (delta<14) && (n>2)){
-    	n=n-2;
-    	Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(255) );
-    	delta=  (int) (signatureProfil[n][3]-signatureProfil[n-2][3]);
-    	
-    }
-     n=posmax;
-     delta=(int) (signatureProfil[n+2][3]-signatureProfil[n][3]);
-     while((delta>7) && (delta<14) && (n<NombreZones-2)){
-     n=n+2;
-     Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(255) );
-     delta=(int) (signatureProfil[n+2][3]-signatureProfil[n][3]);
-     }
+    
 
      
      
 
      
-     
+    
      
      // Profil Colonne
      signal10=null;
@@ -734,7 +740,7 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
          	  signatureProfilColonne[noZone][5]=0; // signe du maxi de la zone
                signatureProfilColonne[noZone][6]=0; // estimation de la qualit� du groupe
          	  debut=n;
-               maxi=Math.abs(signal10[n-1]);
+               maxi=Math.abs(signal10[n]);
      	}
      	
      }
@@ -744,20 +750,58 @@ Mat autocseuil=Mat.zeros(128, 128, CvType.CV_8U);
      System.out.println("noZone======"+noZone);
      NombreZones=noZone;
 
-     noZone=17;
+     noZone=16;
      if (signatureProfilColonne[noZone][5]==1)   noZone++;
 
      // Detection du centre de la zone la plus probable
      // Il faudrait tenir compte de la largeur de chaque zone 
-     while (noZone<NombreZones-18)
+     while (noZone<NombreZones-17)
      {
-     	for (n=10;n<=16;n++)
+     	for (n=9;n<=15;n++)
      {signatureProfilColonne[noZone][6]=signatureProfilColonne[noZone][6]+signatureProfilColonne[noZone-n][4]+signatureProfilColonne[noZone+n][4];}
         
     noZone=noZone+2;
      }
 
 
+     
+     
+     double max=signatureProfil[0][6];
+     int posmax=0;
+     for (int i=1;i<=NombreZones;i++){
+     if (signatureProfil[i][6]>max){
+     	max=signatureProfil[i][6];
+     	posmax=i;
+     }
+
+     	
+      }
+    System.out.println(" kk "+ max+ "  tt " + posmax);
+     n=posmax;
+     Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(255) ); 
+     int delta=(int) (signatureProfil[n][3]-signatureProfil[n-2][3]);
+     n=posmax;
+     while((delta>7) && (delta<14) && (n>2)){
+     	n=n-2;
+     	Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(0,255,0) );
+     	delta=  (int) (signatureProfil[n][3]-signatureProfil[n-2][3]);
+     	
+     }
+      n=posmax;
+      delta=(int) (signatureProfil[n+2][3]-signatureProfil[n][3]);
+      while((delta>7) && (delta<14) && (n<NombreZones-2)){
+      n=n+2;
+      Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(0,255,0) );
+      delta=(int) (signatureProfil[n+2][3]-signatureProfil[n][3]);
+      }
+     
+     
+     
+     
+     
+     
+     
+     
 
 System.out.println("Test 1");
      
@@ -781,29 +825,44 @@ System.out.println("Test 1");
     Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3],0), new org.opencv.core.Point(signatureProfilColonne[n][3],255), new Scalar(255) ); 
      
     System.out.println("Test 3");
-    delta=(int) (signatureProfilColonne[n][3]-signatureProfilColonne[n-2][3]);
+     delta=(int) (signatureProfilColonne[n][3]-signatureProfilColonne[n-2][3]);
     n=posmax;
     while((delta>7) && (delta<14) && (n>2)){
     	n=n-2;
-    	Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfilColonne[n][3]), new org.opencv.core.Point(255,signatureProfilColonne[n][3]), new Scalar(255) );
+    	
+     System.out.println(" "+signatureProfilColonne[n][3]);    	
+    	Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3],0), new org.opencv.core.Point(signatureProfilColonne[n][3],255), new Scalar(0,255,0) );
     	delta=  (int) (signatureProfilColonne[n][3]-signatureProfilColonne[n-2][3]);
     }
     n=posmax;
     delta=(int) (signatureProfilColonne[n+2][3]-signatureProfilColonne[n][3]);
+    
+  
+    
+    System.out.println("Test 4");
+
+    
     while((delta>7) && (delta<14) && (n<NombreZones-2)){
     n=n+2;
-    Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3],0), new org.opencv.core.Point(signatureProfil[n][3],255), new Scalar(255) );
+    Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3],0), new org.opencv.core.Point(signatureProfilColonne[n][3],255), new Scalar(0,255,0) );
     delta=(int) (signatureProfilColonne[n+2][3]-signatureProfilColonne[n][3]);
     }
 
 
 
-    System.out.println("Test 4");
+    System.out.println("Test 5");
 
      
 
+    
+    
+    
+    
+    
+    
+    
+    return  imRedressee;
      
-    return imRedressee;
     }
  
     
@@ -815,12 +874,11 @@ System.out.println("Test 1");
     	int  L=signal.length;
     	int  delta10=5;
 
-    	for (int l=delta10+1;l<=L-delta10-1;l++){
+    	for (int l=delta10;l<=L-delta10-2;l++){
     	signal10[l]=2*signal[l]-signal[l-delta10]-signal[l+delta10];	
     	}
     	return signal10;	
     	}
-
 
 
     	public double[] AnalyseProfil_2_20(double[] signal){
@@ -828,7 +886,7 @@ System.out.println("Test 1");
     	int  L=signal.length;
     	int  delta20=15;
 
-    	for (int l=delta20+1;l<=L-delta20-1;l++){
+    	for (int l=delta20;l<=L-delta20-2;l++){
     	signal20[l]=2*signal[l]-signal[l-delta20]-signal[l+delta20];	
     	}
     	return signal20;	
@@ -842,7 +900,7 @@ System.out.println("Test 1");
     	double somme=0;
     	int delta10=5;
     	int L=signal.cols();
-    	for (int l=delta10+1;l<=L-delta10-1;l++)
+    	for (int l=delta10;l<=L-delta10-2;l++)
     		somme=somme+Math.abs(signal.get(0, l-delta10)[0]+signal.get(0, l+delta10)[0]-2*signal.get(0, l)[0]);
     		return somme;
     	}
@@ -853,7 +911,7 @@ System.out.println("Test 1");
     	double somme=0;
     	int delta20=10;
     	int L=signal.cols();
-    	for (int l=delta20+1;l<=L-delta20-1;l++)
+    	for (int l=delta20;l<=L-delta20-2;l++)
     		somme=somme+Math.abs(signal.get(0, l-delta20)[0]+signal.get(0, l+delta20)[0]-2*signal.get(0, l)[0]);
     		return somme;
     	}
@@ -868,7 +926,7 @@ System.out.println("Test 1");
     	double somme=0;
     	int delta10=5;
     	int L=signal.rows();
-    	for (int l=delta10+1;l<=L-delta10-1;l++)
+    	for (int l=delta10;l<=L-delta10-2;l++)
     		somme=somme+Math.abs(signal.get(l-delta10,0 )[0]+signal.get(l+delta10,0 )[0]-2*signal.get(l, 0)[0]);
     		return somme;
     	}
@@ -879,7 +937,7 @@ System.out.println("Test 1");
     	double somme=0;
     	int delta20=10;
     	int L=signal.rows();
-    	for (int l=delta20+1;l<=L-delta20-1;l++)
+    	for (int l=delta20;l<=L-delta20-2;l++)
     		somme=somme+Math.abs(signal.get( l-delta20,0)[0]+signal.get( l+delta20,0)[0]-2*signal.get( l,0)[0]);
     		return somme;
     	}
@@ -1181,6 +1239,16 @@ System.out.println("Test 1");
     		    blob.add(new Bary(318,312,0)); 
     		    return blob;
     }    
-    		    
+   
+    private int round(double d){
+        double dAbs = Math.abs(d);
+        int i = (int) dAbs;
+        double result = dAbs - (double) i;
+        if(result<0.5){
+            return d<0 ? -i : i;            
+        }else{
+            return d<0 ? -(i+1) : i+1;          
+        }
+    }  
 	
 }

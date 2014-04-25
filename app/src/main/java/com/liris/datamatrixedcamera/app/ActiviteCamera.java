@@ -47,6 +47,8 @@ import com.liris.datamatrixedcamera.app.traitement.ActiviteTraitement;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.highgui.Highgui;
 
@@ -63,8 +65,11 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     private SurfaceHolder holder;
     private Camera camera;
 
-    private int hauteurPhoto,largeurPhoto = -1;
+    static public Mat image;
+    static  public Bitmap subBmp;
 
+    private int hauteurPhoto = -1,largeurPhoto = -1;
+    private String optionsTaillePhoto = "TAILLE_PHOTO";
     private String TAG = "datamatrixedcamera";
     private SoundPool soundPool;
     private int idSonPhoto;
@@ -83,11 +88,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             switch (status) {
                 case LoaderCallbackInterface.SUCCESS:
                 {
-                    Mat Image = Highgui.imread("/image.jpg");
-                    if (Image == null) {
-                        AlertDialog ad = new AlertDialog.Builder(activity).create();
-                        ad.setMessage("Fatal error: can't open /image.jpg!");
-                    }
+                    Log.i(TAG, "OpenCV loaded successfully");
+                    image = new Mat(512,512,CvType.CV_8UC1);
                 } break;
                 default:
                 {
@@ -105,10 +107,13 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         this.callback = new RawCallback();
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
 
-        if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_2, this, mOpenCVCallBack))
+        if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_8, this, mOpenCVCallBack))
         {
             Log.e("TEST", "Cannot connect to OpenCV Manager");
         }
+        Log.i("Abcd",Core.NATIVE_LIBRARY_NAME + " " + Core.VERSION);
+
+
         // Pour mettre en plein écran
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -184,12 +189,13 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             }
         });
 
-        // On restaure les paramètres enregistrés
-        SharedPreferences settings = getSharedPreferences("TAILLE_PHOTO", 0);
-        settings.getInt("largeur",-1);
-        settings.getInt("hauteur", -1);
 
-        Log.w("Settings","Je restaure");
+        // On restaure les paramètres enregistrés
+        SharedPreferences settings = getSharedPreferences(optionsTaillePhoto, 0);
+        largeurPhoto = settings.getInt("largeur",-1);
+        hauteurPhoto = settings.getInt("hauteur", -1);
+
+        Log.w("Settings","Je restaure " + largeurPhoto + " " + hauteurPhoto);
 
 
 
@@ -197,8 +203,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
     @Override
     protected void onPause() {
-
         super.onPause();
+
 
     }
 
@@ -266,13 +272,13 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         if (largeurPhoto != -1 || hauteurPhoto != -1) {
-                            SharedPreferences previewSizePref = getSharedPreferences("TAILLE_PHOTO", MODE_PRIVATE);
+                            SharedPreferences previewSizePref = getSharedPreferences(optionsTaillePhoto, MODE_PRIVATE);
                             SharedPreferences.Editor prefEditor = previewSizePref.edit();
                             prefEditor.putBoolean("existe",true);
                             prefEditor.putInt("largeur", largeurPhoto);
                             prefEditor.putInt("hauteur", hauteurPhoto);
                             prefEditor.commit();
-                            Log.w("SETTINGS","J'enregistre");
+                            Log.w("SETTINGS","J'enregistre " + largeurPhoto + " " + hauteurPhoto);
                         }
 
                     }
@@ -331,21 +337,6 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         }
         return super.onOptionsItemSelected(item);
     }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putInt("positionChoixTaillePhoto",positionChoixTaillePhoto);
-        outState.putInt("positionChoixTaillePreview",positionChoixTaillePreview);
-    }
-
-    @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        //this.positionChoixTaillePreview = savedInstanceState.getInt("positionChoixTaillePreview");
-        //this.positionChoixTaillePhoto = savedInstanceState.getInt("positionChoixTaillePhoto");
-    }
-
 
     public static void setCameraDisplayOrientation(Activity activity,int cameraId, android.hardware.Camera camera) {
         android.hardware.Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
@@ -623,29 +614,62 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                 int y = bmp.getHeight() / 2 - 255;
                 Log.i("SubBMP", "bmp h = " + bmp.getHeight() + " bmp w = " + bmp.getWidth() + " x = " + x + " y = " + y);
 
-                Bitmap subBmp = bmp.createBitmap(bmp,x,y,512,512);
+                subBmp = bmp.createBitmap(bmp,x,y,512,512);
                 bmp.recycle();
                int[] pixels = new int[subBmp.getWidth()*subBmp.getWidth()];
                 subBmp.getPixels(pixels,0,subBmp.getWidth(),0,0,subBmp.getWidth(),subBmp.getHeight());
+
+                int c = 0,l = 0;
                 for(int i = 0;i<pixels.length;i++) {
-                    //Log.i("Pixels[]",i + " : " + pixels[i]);
+                    c=i%512;
+                    l=i/512;
+
+                    //Log.w("MAT IMAGE",i+"i " + c + "c " + l + "l");
                     int red = Color.red(pixels[i]);
                     int blue = Color.blue(pixels[i]);
                     int green = Color.green(pixels[i]);
+                    float grayscale = (float) (0.21*red + 0.71*green + 0.07*blue);
+                    //pixels[i] = grayscale;
 
-                    int grayscale = (int) (0.21*red + 0.71*green + 0.07*blue);
-                    pixels[i] = grayscale;
+                    image.put(l,c,pixels[0]);
+
 
                 }
-                // Prendre le carré 512x512 et le mettre dans un MAT float
 
-                new TacheSauvegardePhoto().execute(subBmp);
+                Log.i("MAT IMAGE", image.get(511,511)[0]+" ");
+
+
+                // new TacheSauvegardePhoto().execute(subBmp);
                 camera.startPreview();
 
-                subBmp.recycle();
+
+                // Création du dialog pour traitement de l'image
+                LayoutInflater inflater = LayoutInflater.from(activity);
+                View vue = inflater.inflate(R.layout.dialog_traitement,null);
+                ImageView apercu = (ImageView) vue.findViewById(R.id.apercu);
+                apercu.setImageBitmap(subBmp);
+
+                new AlertDialog.Builder(activity).setTitle("Voulez-vous continuer avec cette image ?")
+                        .setView(vue)
+                        .setPositiveButton("Oui",new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                Intent intent = new Intent(activity, ActiviteTraitement.class);
+                                intent.putExtra("dialog",true);
+                                startActivity(intent);
+                            }
+                        })
+                        .setNegativeButton("Non",new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+
+                            }
+                        })
+                        .show();
+
             }
             catch(Exception e){
-                Log.i("Photo",e.getMessage());
+                Log.i("Photo","Erreur : " + e.getMessage());
                 e.printStackTrace();
                 recreate();
             }

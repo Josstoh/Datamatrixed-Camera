@@ -28,6 +28,7 @@ import android.widget.ImageView;
 //import com.googlecode.javacv.cpp.opencv_core.CvScalar;
 //import com.googlecode.javacv.cpp.opencv_core.IplImage;import android.widget.Toast;
 
+import com.liris.datamatrixedcamera.app.ActiviteCamera;
 import com.liris.datamatrixedcamera.app.R;
 
 public class ActiviteTraitement extends Activity {
@@ -73,63 +74,83 @@ public class ActiviteTraitement extends Activity {
         if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_2, this, mOpenCVCallBack)) {
             Log.e("TEST", "Cannot connect to OpenCV Manager");
         }
-        ((Button) findViewById(R.id.bImporterImage))
-                .setOnClickListener(new OnClickListener() {
-                    public void onClick(View arg0) {
-                        // On récupère l'image
-                        Intent intent = new Intent();
-                        intent.setType("image/*");
-                        intent.setAction(Intent.ACTION_GET_CONTENT);
-                        startActivityForResult(Intent.createChooser(intent, "Select Picture"), SELECT_PICTURE);
-                    }
-                });
 
-        ((Button) findViewById(R.id.bZoomGrayscale))
-                .setOnClickListener(new OnClickListener() {
-                    public void onClick(View arg0) {
-                        // On la transforme en grayscale et on zoom
-                        try {
-                            String path = selectedImagePath;
+        // dialog == true si on ne passe pas par un fichier mais directement depuis la Mat image
+        boolean dialog = getIntent().getBooleanExtra("dialog", false);
+        if(!dialog)
+        {
+            ((Button) findViewById(R.id.bImporterImage))
+                    .setOnClickListener(new OnClickListener() {
+                        public void onClick(View arg0) {
+                            // On récupère l'image
+                            Intent intent = new Intent();
+                            intent.setType("image/*");
+                            intent.setAction(Intent.ACTION_GET_CONTENT);
+                            startActivityForResult(Intent.createChooser(intent, "Select Picture"), SELECT_PICTURE);
+                        }
+                    });
 
-                            System.out.println("selected image path is " + selectedImagePath);
+            ((Button) findViewById(R.id.bZoomGrayscale))
+                    .setOnClickListener(new OnClickListener() {
+                        public void onClick(View arg0) {
+                            // On la transforme en grayscale et on zoom
+                            try {
+                                String path = selectedImagePath;
 
-                            Mat m = Highgui.imread(path);
-                            if (m == null) {
-                                Log.i("Start", "--------Image Cannot be Loaded--------");
-                            } else {
-                                Log.i("Start", "--------Image Loaded Successfully--------");
-                                System.out.println("je suis dans le code 2 ");
+                                System.out.println("selected image path is " + selectedImagePath);
 
-                                Log.i("Paramenres on matrix", "height " + m.height() + " width " + m.width() + " total = " + m.total() + " channels " + m.channels());
-                                int NLs2, NCs2;
-                                int NC = m.width();
-                                int NL = m.height();
-                                System.out.println("line_size " + NL);
-                                System.out.println("colone_size " + NC);
-                                NLs2 = NL / 2;
-                                NCs2 = NC / 2;
-                                int rowStart = NLs2 - 255;
-                                int rowEnd = NLs2 + 256;
-                                int colStart = NCs2 - 255;
-                                int colEnd = NCs2 + 256;
-                                submatrice = m.submat(rowStart, rowEnd, colStart, colEnd);
-                                // Bitmap img_b;
-                                grayscaleMatrix = action.grayScale(submatrice);
-                                Bitmap img_bitmp = Bitmap.createBitmap(submatrice.cols(), submatrice.rows(), Bitmap.Config.ARGB_8888);
-                                Utils.matToBitmap(grayscaleMatrix, img_bitmp);
-                                img.setImageBitmap(img_bitmp);
+                                Mat m = Highgui.imread(path);
+                                if (m == null) {
+                                    Log.i("Start", "--------Image Cannot be Loaded--------");
+                                } else {
+                                    Log.i("Start", "--------Image Loaded Successfully--------");
+                                    System.out.println("je suis dans le code 2 ");
+
+                                    Log.i("Paramenres on matrix", "height " + m.height() + " width " + m.width() + " total = " + m.total() + " channels " + m.channels());
+                                    int NLs2, NCs2;
+                                    int NC = m.width();
+                                    int NL = m.height();
+                                    System.out.println("line_size " + NL);
+                                    System.out.println("colone_size " + NC);
+                                    NLs2 = NL / 2;
+                                    NCs2 = NC / 2;
+                                    int rowStart = NLs2 - 255;
+                                    int rowEnd = NLs2 + 256;
+                                    int colStart = NCs2 - 255;
+                                    int colEnd = NCs2 + 256;
+                                    submatrice = m.submat(rowStart, rowEnd, colStart, colEnd);
+                                    // Bitmap img_b;
+                                    grayscaleMatrix = action.grayScale(submatrice);
+
+                                    Bitmap img_bitmp = Bitmap.createBitmap(submatrice.cols(), submatrice.rows(), Bitmap.Config.ARGB_8888);
+                                    Utils.matToBitmap(grayscaleMatrix, img_bitmp);
+                                    img.setImageBitmap(img_bitmp);
+                                }
+
+
+
+
+                            } catch (Exception e) {
+                                System.err.print("Error in the code");
+                                Log.i("Error in imreadddd", "Error in imreadxxxx");
                             }
 
-
-
-
-                        } catch (Exception e) {
-                            System.err.print("Error in the code");
-                            Log.i("Error in imreadddd", "Error in imreadxxxx");
                         }
+                    });
+        }
+        else
+        {
+            try {
+                grayscaleMatrix = ActiviteCamera.image;
+                img.setImageBitmap(ActiviteCamera.subBmp);
+            }
+            catch(Exception e)
+            {
+                Log.e("TRAITEMENT","Erreur : " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
 
-                    }
-                });
 
         ((Button) findViewById(R.id.bBinary))
                 .setOnClickListener(new OnClickListener() {
@@ -293,5 +314,9 @@ public class ActiviteTraitement extends Activity {
 
 
     }
-//Extraction des parametres de la grille
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
 }

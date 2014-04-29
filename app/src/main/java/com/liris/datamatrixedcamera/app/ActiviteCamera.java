@@ -1,45 +1,35 @@
 package com.liris.datamatrixedcamera.app;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.os.Bundle;
-import android.util.DisplayMetrics;
-import android.view.Gravity;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.os.Build;
-import android.os.PowerManager;
-import android.util.Log;
-import android.view.MenuItem;
-import android.view.OrientationEventListener;
-import android.view.Surface;
-import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
-import android.app.Activity;
 import android.graphics.Bitmap;
 import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.SoundPool;
-import android.os.Environment;
+import android.os.Build;
+import android.os.Bundle;
+import android.util.DisplayMetrics;
+import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.ViewGroup.LayoutParams;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ListView;
-import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
 import com.liris.datamatrixedcamera.app.traitement.ActiviteTraitement;
@@ -50,38 +40,36 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.highgui.Highgui;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
+    // Général
     static public Activity activity;
-    private SurfaceView surfaceView;
-    private SurfaceHolder holder;
-    private Camera camera;
-
     static public Mat image;
     static  public Bitmap subBmp;
 
-    private int hauteurPhoto = -1,largeurPhoto = -1;
+    // Constantes
     private String optionsTaillePhoto = "TAILLE_PHOTO";
     private String TAG = "datamatrixedcamera";
+    private DisplayMetrics metrics = new DisplayMetrics();
+
+    // Attributs
+    private SurfaceView surfaceView;
+    private SurfaceHolder holder;
+    private Camera camera;
+    private int hauteurPhoto = -1,largeurPhoto = -1;
     private SoundPool soundPool;
     private int idSonPhoto;
     private Boolean loaded = false;
     private RawCallback callback;
     private int positionChoixTaillePhoto = -1;
     private int positionChoixTaillePreview = -1;
-    private Camera.Size choixTaillePhoto = null;
-    private Camera.Size choixTaillePreview = null;
-
     private ImageView ivMire;
-    private DisplayMetrics metrics = new DisplayMetrics();
+
+    // Attribut test pour openCV
     private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -99,7 +87,6 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         }
     };
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -109,10 +96,16 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
         if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_8, this, mOpenCVCallBack))
         {
-            Log.e("TEST", "Cannot connect to OpenCV Manager");
-        }
-        Log.i("Abcd",Core.NATIVE_LIBRARY_NAME + " " + Core.VERSION);
+            Log.e("", "Cannot connect to OpenCV Manager");
+            new AlertDialog.Builder(activity).setTitle("Oups...").setMessage("OpenCV Manager n'est pas installé sur votre appareil Android : cette application ne peut pas fonctionner... :-(")
+                    .setPositiveButton("Ok... :-(",new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            finish();
+                        }
+                    }).show();
 
+        }
 
         // Pour mettre en plein écran
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -194,18 +187,11 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         SharedPreferences settings = getSharedPreferences(optionsTaillePhoto, 0);
         largeurPhoto = settings.getInt("largeur",-1);
         hauteurPhoto = settings.getInt("hauteur", -1);
-
-        Log.w("Settings","Je restaure " + largeurPhoto + " " + hauteurPhoto);
-
-
-
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
-
     }
 
     @Override
@@ -609,63 +595,18 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         public void onPictureTaken(byte[] data, Camera camera) {
             try{
                 Toast.makeText(activity, "PHOTO", 10).show();
-                Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
-                int x = bmp.getWidth() / 2 - 255;
-                int y = bmp.getHeight() / 2 - 255;
-                Log.i("SubBMP", "bmp h = " + bmp.getHeight() + " bmp w = " + bmp.getWidth() + " x = " + x + " y = " + y);
+                Log.i("STATUT","avant start");
 
-                subBmp = bmp.createBitmap(bmp,x,y,512,512);
-                bmp.recycle();
-               int[] pixels = new int[subBmp.getWidth()*subBmp.getWidth()];
-                subBmp.getPixels(pixels,0,subBmp.getWidth(),0,0,subBmp.getWidth(),subBmp.getHeight());
+                Log.i("STATUT","après");
 
-                int c = 0,l = 0;
-                for(int i = 0;i<pixels.length;i++) {
-                    c=i%512;
-                    l=i/512;
-
-                    //Log.w("MAT IMAGE",i+"i " + c + "c " + l + "l");
-                    int red = Color.red(pixels[i]);
-                    int blue = Color.blue(pixels[i]);
-                    int green = Color.green(pixels[i]);
-                    float grayscale = (float) (0.21*red + 0.71*green + 0.07*blue);
-                    //pixels[i] = grayscale;
-
-                    image.put(l,c,pixels[0]);
-
-
-                }
-
-                Log.i("MAT IMAGE", image.get(511,511)[0]+" ");
-
-
+                Log.i("STATUT","début");
+                new TacheEnregistrementPhoto(activity,new OnTacheEnregistrementDone()).execute(data);
                 // new TacheSauvegardePhoto().execute(subBmp);
+                Log.i("STATUT","sortie");
                 camera.startPreview();
 
+                //Log.i("PHOTO RESULTAT", resultat.toString());
 
-                // Création du dialog pour traitement de l'image
-                LayoutInflater inflater = LayoutInflater.from(activity);
-                View vue = inflater.inflate(R.layout.dialog_traitement,null);
-                ImageView apercu = (ImageView) vue.findViewById(R.id.apercu);
-                apercu.setImageBitmap(subBmp);
-
-                new AlertDialog.Builder(activity).setTitle("Voulez-vous continuer avec cette image ?")
-                        .setView(vue)
-                        .setPositiveButton("Oui",new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                Intent intent = new Intent(activity, ActiviteTraitement.class);
-                                intent.putExtra("dialog",true);
-                                startActivity(intent);
-                            }
-                        })
-                        .setNegativeButton("Non",new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-
-                            }
-                        })
-                        .show();
 
             }
             catch(Exception e){
@@ -673,6 +614,35 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                 e.printStackTrace();
                 recreate();
             }
+        }
+    }
+    public class OnTacheEnregistrementDone
+    {
+        public void afficherDialog()
+        {
+            // Création du dialog pour traitement de l'image
+            LayoutInflater inflater = LayoutInflater.from(activity);
+            View vue = inflater.inflate(R.layout.dialog_traitement,null);
+            ImageView apercu = (ImageView) vue.findViewById(R.id.apercu);
+            apercu.setImageBitmap(subBmp);
+
+            new AlertDialog.Builder(activity).setTitle("Voulez-vous continuer avec cette image ?")
+                    .setView(vue)
+                    .setPositiveButton("Oui",new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            Intent intent = new Intent(activity, ActiviteTraitement.class);
+                            intent.putExtra("dialog",true);
+                            startActivity(intent);
+                        }
+                    })
+                    .setNegativeButton("Non",new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+
+                        }
+                    })
+                    .show();
         }
     }
 }

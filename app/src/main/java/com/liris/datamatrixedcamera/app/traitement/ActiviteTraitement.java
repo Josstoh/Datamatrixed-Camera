@@ -119,7 +119,6 @@ public class ActiviteTraitement extends Activity {
                                     int colStart = NCs2 - 255;
                                     int colEnd = NCs2 + 256;
                                     submatrice = m.submat(rowStart, rowEnd, colStart, colEnd);
-                                    // Bitmap img_b;
                                     grayscaleMatrix = action.grayScale(submatrice);
 
                                     Bitmap img_bitmp = Bitmap.createBitmap(submatrice.cols(), submatrice.rows(), Bitmap.Config.ARGB_8888);

@@ -29,6 +29,7 @@ class TacheSauvegardePhoto extends AsyncTask<Bitmap, String, String> {
     @Override
     protected String doInBackground(Bitmap... photo) {
 
+
         File fichierPhoto=new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Photo1.jpg");
 
         if (fichierPhoto.exists()) {

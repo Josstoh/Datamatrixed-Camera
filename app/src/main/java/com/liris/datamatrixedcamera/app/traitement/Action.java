@@ -57,7 +57,7 @@ public class Action {
 
 	
 	
-	 public Mat autoCorrelation(Mat input)
+    public Mat autoCorrelation(Mat input)
 	    {
 	   
 		 
@@ -90,37 +90,37 @@ public class Action {
 
 
 
-	    Core.idft(complexImg, complexImg);
-      Core.split(complexImg, planes);
+        Core.idft(complexImg, complexImg);
+        Core.split(complexImg, planes);
 
-      Mat auto=planes.get(0);
- 
-      
-     
-   // rearrange the quadrants of Fourier image  so that the origin is at the image center
+        Mat auto=planes.get(0);
 
-      int cx = auto.cols()/2;
-      int cy = auto.rows()/2;
-   org.opencv.core.Rect rectq0 = new  org.opencv.core.Rect  (0, 0, cx, cy);
-   org.opencv.core.Rect rectq1 = new  org.opencv.core.Rect (cx, 0, cx, cy);
-   org.opencv.core.Rect rectq2 = new  org.opencv.core.Rect  (0, cy, cx, cy);
-   org.opencv.core.Rect rectq3 = new  org.opencv.core.Rect  (cx, cy, cx, cy);
 
-   Mat q0=new Mat (auto, rectq0);
-   Mat q1=new Mat (auto, rectq1);
-   Mat q2=new Mat (auto, rectq2);
-   Mat q3=new Mat (auto, rectq3);
-     Mat tmp=new Mat();                           // swap quadrants (Top-Left with Bottom-Right)
-      q0.copyTo(tmp);
-      q3.copyTo(q0);
-      tmp.copyTo(q3);
-      q1.copyTo(tmp);                    // swap quadrant (Top-Right with Bottom-Left)
-      q2.copyTo(q1);
-      tmp.copyTo(q2);
 
-      Core.normalize(auto, auto, 0, 255,Core.NORM_MINMAX);
+        // rearrange the quadrants of Fourier image  so that the origin is at the image center
 
-return auto;
+        int cx = auto.cols()/2;
+        int cy = auto.rows()/2;
+        org.opencv.core.Rect rectq0 = new  org.opencv.core.Rect  (0, 0, cx, cy);
+        org.opencv.core.Rect rectq1 = new  org.opencv.core.Rect (cx, 0, cx, cy);
+        org.opencv.core.Rect rectq2 = new  org.opencv.core.Rect  (0, cy, cx, cy);
+        org.opencv.core.Rect rectq3 = new  org.opencv.core.Rect  (cx, cy, cx, cy);
+
+        Mat q0=new Mat (auto, rectq0);
+        Mat q1=new Mat (auto, rectq1);
+        Mat q2=new Mat (auto, rectq2);
+        Mat q3=new Mat (auto, rectq3);
+        Mat tmp=new Mat();                           // swap quadrants (Top-Left with Bottom-Right)
+        q0.copyTo(tmp);
+        q3.copyTo(q0);
+        tmp.copyTo(q3);
+        q1.copyTo(tmp);                    // swap quadrant (Top-Right with Bottom-Left)
+        q2.copyTo(q1);
+        tmp.copyTo(q2);
+
+        Core.normalize(auto, auto, 0, 255,Core.NORM_MINMAX);
+
+        return auto;
       
 	    }
 	 

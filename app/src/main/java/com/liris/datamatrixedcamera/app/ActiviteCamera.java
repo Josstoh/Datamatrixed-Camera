@@ -10,6 +10,7 @@ import android.graphics.Bitmap;
 import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.SoundPool;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -37,7 +38,6 @@ import com.liris.datamatrixedcamera.app.traitement.ActiviteTraitement;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 
@@ -64,7 +64,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     private SoundPool soundPool;
     private int idSonPhoto;
     private Boolean loaded = false;
-    private RawCallback callback;
+    private PhotoCallback callback;
     private int positionChoixTaillePhoto = -1;
     private int positionChoixTaillePreview = -1;
     private ImageView ivMire;
@@ -77,6 +77,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                 case LoaderCallbackInterface.SUCCESS:
                 {
                     Log.i(TAG, "OpenCV loaded successfully");
+                    // Création de la matrice image
                     image = new Mat(512,512,CvType.CV_8UC1);
                 } break;
                 default:
@@ -90,18 +91,33 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Attributions
         activity = this;
-        this.callback = new RawCallback();
+        this.callback = new PhotoCallback();
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
 
+        //Teste si OpenCV est installé
         if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_8, this, mOpenCVCallBack))
         {
             Log.e("", "Cannot connect to OpenCV Manager");
-            new AlertDialog.Builder(activity).setTitle("Oups...").setMessage("OpenCV Manager n'est pas installé sur votre appareil Android : cette application ne peut pas fonctionner... :-(")
+            new AlertDialog.Builder(activity).setTitle("Oups...")
+                    .setMessage("OpenCV Manager n'est pas installé sur votre appareil Android : cette application ne peut pas fonctionner... :-( \n Vous allez être rediriger vers la fiche market de OpencCV Manager...")
                     .setPositiveButton("Ok... :-(",new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
                             finish();
+                            final String appPackageName = "org.opencv.engine";
+                            try {
+                                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + appPackageName)));
+                            } catch (android.content.ActivityNotFoundException anfe) {
+                                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://play.google.com/store/apps/details?id=" + appPackageName)));
+                            }
+                            try {
+                                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + appPackageName)));
+                            } catch (android.content.ActivityNotFoundException anfe) {
+                                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://play.google.com/store/apps/details?id=" + appPackageName)));
+                            }
                         }
                     }).show();
 
@@ -207,7 +223,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     {
         final Camera.Parameters parameters = camera.getParameters();
 
-        // Creation alertDialog
+        // Creation alertDialog et initialisations
         final AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setTitle("Choisissez la taille");
         LayoutInflater inflater = LayoutInflater.from(activity);
@@ -298,7 +314,6 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
                                 String choix = arrayTaillePreview[position];
                                 int index = choix.indexOf("x");
-                                int taille = choix.length();
                                 String hauteur = choix.substring(0, index - 1);
                                 String largeur = choix.substring(index + 2);
 
@@ -308,15 +323,9 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                                 camera.stopPreview();
                                 camera.setParameters(parameters);
                                 camera.startPreview();
-                                Log.i("Preview", "Start Preview");
                             }
                         }
-                ).setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-
-                    }
-                });
+                ).setPositiveButton("OK", null);
                 builder.show();
                 return true;
 
@@ -324,6 +333,13 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         return super.onOptionsItemSelected(item);
     }
 
+    /**
+     * Met à jour l'affichage de la preview dans la bonne orientation
+     * @param activity
+     * @param cameraId
+     * @param camera
+     * @return
+     */
     public static void setCameraDisplayOrientation(Activity activity,int cameraId, android.hardware.Camera camera) {
         android.hardware.Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
         android.hardware.Camera.getCameraInfo(cameraId, info);
@@ -351,8 +367,6 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         try {
             camera = Camera.open();
             camera.setPreviewDisplay(holder);
-
-            Log.i("Preview","Start Preview");
 
             surfaceView.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
@@ -454,7 +468,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     }
 
     /**
-     * Calculate the optimal size of camera preview
+     * Calcule la taille optimale pour la preview
      * @param tailles
      * @param w
      * @param h
@@ -469,7 +483,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         Camera.Size optimalSize = null;
         double minDiff = Double.MAX_VALUE;
         int targetHeight = h;
-        // Try to find an size match aspect ratio and size
+        // Cherche une taille qui respecte le ratio donné
         for (Camera.Size size : tailles)
         {
             double ratio = (double) size.width / size.height;
@@ -483,7 +497,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             }
             Log.i("Taille Preview", "minDiff after = " + minDiff + " optimalSize = " + optimalSize.width  + "w "+ optimalSize.height+"h");
         }
-        // Cannot find the one match the aspect ratio, ignore the requirement
+        // Si on trouve rien dessus, on ignore les entrées
 
         if (optimalSize == null)
         {
@@ -496,62 +510,13 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                 }
             }
         }
-
-
-
       Log.i("Taille Preview", "Using size: " + optimalSize.width + "w " + optimalSize.height + "h");
         return optimalSize;
     }
 
-    private Camera.Size obtenirTaillePictureOptimale(List<Camera.Size> tailles, int w, int h) {
-
-        final double ASPECT_TOLERANCE = 0.2;
-        double targetRatio = (double) w / h;
-        if (tailles == null)
-            return null;
-        Camera.Size optimalSize = null;
-        double minDiff = Double.MAX_VALUE;
-        int targetHeight = h;
-        // Try to find an size match aspect ratio and size
-        for (Camera.Size size : tailles)
-        {
-            Log.i("CameraActivity", "Checking size " + size.width + "w " + size.height + "h");
-            double ratio = (double) size.width / size.height;
-            if (Math.abs(ratio - targetRatio) > ASPECT_TOLERANCE)
-                continue;
-            if (Math.abs(size.height - targetHeight) < minDiff)
-            {
-                optimalSize = size;
-                minDiff = Math.abs(size.height - targetHeight);
-            }
-        }
-        // Cannot find the one match the aspect ratio, ignore the requirement
-
-        if (optimalSize == null)
-        {
-            minDiff = Double.MAX_VALUE;
-            for (Camera.Size size : tailles) {
-                if (Math.abs(size.height - targetHeight) < minDiff)
-                {
-                    optimalSize = size;
-                    minDiff = Math.abs(size.height - targetHeight);
-                }
-            }
-        }
-
-        SharedPreferences previewSizePref;
-
-        previewSizePref = getSharedPreferences("PREVIEW_PREF",MODE_PRIVATE);
-        SharedPreferences.Editor prefEditor = previewSizePref.edit();
-        prefEditor.putInt("width", optimalSize.width);
-        prefEditor.putInt("height", optimalSize.height);
-
-        prefEditor.commit();
-
-        Log.i("CameraActivity", "Using size: " + optimalSize.width + "w " + optimalSize.height + "h");
-        return optimalSize;
-    }
-
+    /**
+    * Calcule la taille de la mire par rapport à la taille de la preview et de la photo pour correspondre à l'image finale
+     */
     private void definirTailleMire()
     {
         if(camera != null)
@@ -572,7 +537,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         }
 
     }
-    class RawCallback implements Camera.ShutterCallback, Camera.PictureCallback {
+    // Classe appelé lors de la prise d'une photo
+    class PhotoCallback implements Camera.ShutterCallback, Camera.PictureCallback {
 
         @Override
         public void onShutter() {

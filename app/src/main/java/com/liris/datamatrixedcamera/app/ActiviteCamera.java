@@ -1,62 +1,130 @@
 package com.liris.datamatrixedcamera.app;
 
-import android.app.AlertDialog;
-import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.os.Build;
-import android.os.PowerManager;
-import android.util.Log;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.SoundPool;
-import android.os.Environment;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.util.DisplayMetrics;
+import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.ViewGroup.LayoutParams;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.widget.ListView;
-import android.widget.SimpleAdapter;
+import android.widget.ImageView;
 import android.widget.Toast;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
+import com.liris.datamatrixedcamera.app.traitement.ActiviteTraitement;
+
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
+    // Général
+    static public Activity activity;
+    static public Mat image;
+    static  public Bitmap subBmp;
+
+    // Constantes
+    private String optionsTaillePhoto = "TAILLE_PHOTO";
+    private String TAG = "datamatrixedcamera";
+    private DisplayMetrics metrics = new DisplayMetrics();
+
+    // Attributs
     private SurfaceView surfaceView;
     private SurfaceHolder holder;
     private Camera camera;
-    private Activity activity;
-    private ListView listView = null;
-    private View dialog = null;
-    private PowerManager.WakeLock wakeLock;
-    private String TAG = "datamatrixedcamera";
+    private int hauteurPhoto = -1,largeurPhoto = -1;
     private SoundPool soundPool;
     private int idSonPhoto;
     private Boolean loaded = false;
-    private RawCallback callback;
+    private PhotoCallback callback;
+    private int positionChoixTaillePhoto = -1;
+    private int positionChoixTaillePreview = -1;
+    private ImageView ivMire;
+
+    // Attribut test pour openCV
+    private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                {
+                    Log.i(TAG, "OpenCV loaded successfully");
+                    // Création de la matrice image
+                    image = new Mat(512,512,CvType.CV_8UC1);
+                } break;
+                default:
+                {
+                    super.onManagerConnected(status);
+                } break;
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        this.activity = this;
-        this.callback = new RawCallback();
-        // Pour mettre en plein écran
-        if (Build.VERSION.SDK_INT < 16 || true) {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        // Attributions
+        activity = this;
+        this.callback = new PhotoCallback();
+        getWindowManager().getDefaultDisplay().getMetrics(metrics);
+
+        //Teste si OpenCV est installé
+        if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_8, this, mOpenCVCallBack))
+        {
+            Log.e("", "Cannot connect to OpenCV Manager");
+            new AlertDialog.Builder(activity).setTitle("Oups...")
+                    .setMessage("OpenCV Manager n'est pas installé sur votre appareil Android : cette application ne peut pas fonctionner... :-( \n Vous allez être rediriger vers la fiche market de OpencCV Manager...")
+                    .setPositiveButton("Ok... :-(",new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            finish();
+                            final String appPackageName = "org.opencv.engine";
+                            try {
+                                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + appPackageName)));
+                            } catch (android.content.ActivityNotFoundException anfe) {
+                                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://play.google.com/store/apps/details?id=" + appPackageName)));
+                            }
+                            try {
+                                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + appPackageName)));
+                            } catch (android.content.ActivityNotFoundException anfe) {
+                                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://play.google.com/store/apps/details?id=" + appPackageName)));
+                            }
+                        }
+                    }).show();
+
         }
+
+        // Pour mettre en plein écran
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
 
@@ -68,9 +136,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         holder.addCallback(this);
 
         // Gestion mise en veille de l'ecran
-        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
-        wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, TAG);
-        wakeLock.acquire();
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
 
         // Gestion Son
@@ -94,24 +160,26 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         ImageButton bPhoto = (ImageButton) findViewById(R.id.bPhoto);
         ImageButton bMenu = (ImageButton) findViewById(R.id.bMenu);
 
+        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(100, 100, Gravity.CENTER);
+        ivMire = (ImageView) findViewById(R.id.ivMire);
+        ivMire.setLayoutParams(layoutParams);
+        Button bTraitement = (Button) findViewById(R.id.bTraitement);
+
         // Gestion des listeners
         bPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                camera.takePicture(callback,
-                        null,
-                        callback,
-                        new Camera.PictureCallback() {
+                try {
+                    camera.takePicture(callback,
+                            null,
+                            null,
+                            callback);
+                }
+                catch(Exception e){
+                    Log.e("Photo",e.getMessage());
+                    finish();
+                }
 
-                            @Override
-                            public void onPictureTaken(byte[] photo, Camera camera) {
-                                //new SavePhotoTask().execute(photo);
-                                Toast.makeText(activity, "PHOTO ENREGISTRE", 10).show();
-                                Toast.makeText(activity, String.valueOf(photo.length), 10).show();
-                                camera.startPreview();
-                            }
-                        }
-                );
             }
         });
 
@@ -122,35 +190,24 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             }
         });
 
-        //LayoutInflater inflater = LayoutInflater.from(mPreview.context);
-        //this.dialog = inflater.inflate(R.layout.dialog_choix_taille,null);
-        //AlertDialog.Builder builder = new AlertDialog.Builder(mPreview.context);
-        //builder.setTitle("Choisissez la taille").setView(dialog).show();
+        bTraitement.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(activity, ActiviteTraitement.class);
+                startActivity(intent);
+            }
+        });
 
-        //LayoutInflater controlInflater = LayoutInflater.from(context);
-        //View viewControl = controlInflater.inflate(R.layout.controles, null);
-        //ViewGroup.LayoutParams layoutParamsControl
-        //        = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-        //        ViewGroup.LayoutParams.MATCH_PARENT);
-        //((Activity) context).addContentView(viewControl, layoutParamsControl);
+
+        // On restaure les paramètres enregistrés
+        SharedPreferences settings = getSharedPreferences(optionsTaillePhoto, 0);
+        largeurPhoto = settings.getInt("largeur",-1);
+        hauteurPhoto = settings.getInt("hauteur", -1);
     }
 
     @Override
     protected void onPause() {
-
         super.onPause();
-        if (wakeLock != null) {
-            Log.v(TAG, "Releasing wakelock");
-            try {
-                wakeLock.release();
-            } catch (Throwable th) {
-                // ignoring this exception, probably wakeLock was already released
-            }
-        } else {
-            // should never happen during normal workflow
-            Log.e(TAG, "Wakelock reference is null");
-        }
-
     }
 
     @Override
@@ -164,56 +221,151 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     @Override
     public boolean onOptionsItemSelected (MenuItem item)
     {
+        final Camera.Parameters parameters = camera.getParameters();
+
+        // Creation alertDialog et initialisations
+        final AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        builder.setTitle("Choisissez la taille");
+        LayoutInflater inflater = LayoutInflater.from(activity);
+        ArrayList<String> listTailles = new ArrayList<String>();
+
+
         switch(item.getItemId())
         {
             case R.id.menu_taillePhoto:
-
-                Camera.Parameters parameters = camera.getParameters();
-                HashMap<String,String> mapSize;
-                ArrayList<HashMap<String,String>> listItem = new ArrayList();
-
                 List<Camera.Size> pictureSizes = parameters.getSupportedPictureSizes();
-
                 for (Camera.Size i : pictureSizes)
                 {
-                    mapSize = new HashMap();
-                    mapSize.put("hauteur",String.valueOf(i.height));
-                    mapSize.put("largeur",String.valueOf(i.width));
-                    listItem.add(mapSize);
+                   listTailles.add(i.height + " x " + i.width);
                 }
-                // Creation alertDialog
-                AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-                builder.setTitle("Choisissez la taille");
-                LayoutInflater inflater = LayoutInflater.from(activity);
-                View dialog = inflater.inflate(R.layout.dialog_choix_taille,null);
-                this.listView = (ListView) dialog.findViewById(R.id.listView);
+                final String[] arrayTaillePhoto = new String[listTailles.size()];
+                listTailles.toArray(arrayTaillePhoto);
 
-                try{
-                    listView.setAdapter(new SimpleAdapter(activity, listItem, R.layout.affichage_size,
-                            new String[] {"hauteur","largeur"},new int[] {R.id.hauteur,R.id.largeur} ));
-                }
-                catch (Exception e) {
-                    Boolean b = (listView != null);
-                    Log.w("Dialog taille photo",e.getMessage()+""+b.toString());
-                    return true;
-                }
-                builder.setView(dialog);
-                builder.show();
+                AlertDialog.Builder builder1 = builder.setSingleChoiceItems(arrayTaillePhoto,
+                        positionChoixTaillePhoto,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int position) {
+
+                                positionChoixTaillePhoto = position;
+
+                                String choix = arrayTaillePhoto[position];
+                                int index = choix.indexOf("x");
+                                int taille = choix.length();
+                                hauteurPhoto = Integer.valueOf(choix.substring(0, index - 1));
+                                largeurPhoto = Integer.valueOf(choix.substring(index + 2));
+
+                                // Mise à jour des paramètres
+                                Log.i("Item choisit", hauteurPhoto + " x " + largeurPhoto);
+                                parameters.setPictureSize(largeurPhoto, hauteurPhoto);
+                                camera.setParameters(parameters);
 
 
-                Camera.Size previewSize = pictureSizes.get(1);
-                parameters.setPictureSize(previewSize.width, previewSize.height);
-                camera.setParameters(parameters);
-                camera.startPreview();
+                                // adaptation de la mire
+                                definirTailleMire();
+                            }
+                        }
+                ).setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                    }
+                }).setNeutralButton("Enregistrer mon choix", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        if (largeurPhoto != -1 || hauteurPhoto != -1) {
+                            SharedPreferences previewSizePref = getSharedPreferences(optionsTaillePhoto, MODE_PRIVATE);
+                            SharedPreferences.Editor prefEditor = previewSizePref.edit();
+                            prefEditor.putBoolean("existe",true);
+                            prefEditor.putInt("largeur", largeurPhoto);
+                            prefEditor.putInt("hauteur", hauteurPhoto);
+                            prefEditor.commit();
+                            Log.w("SETTINGS","J'enregistre " + largeurPhoto + " " + hauteurPhoto);
+                        }
+
+                    }
+                });
+
+                Dialog dialog = builder.create();
+                dialog.show();
                 return true;
+
+            case R.id.menu_taillePreview:
+                Camera.Size choixPreview = parameters.getPreviewSize();
+                List<Camera.Size> previewSizes = parameters.getSupportedPreviewSizes();
+                int it = 0;
+                for (Camera.Size i : previewSizes)
+                {
+                    listTailles.add(i.height + " x " + i.width);
+                    if(i.equals(choixPreview))
+                        positionChoixTaillePreview = it;
+                    it++;
+                }
+                final String[] arrayTaillePreview = new String[listTailles.size()];
+                listTailles.toArray(arrayTaillePreview);
+
+                builder.setSingleChoiceItems(arrayTaillePreview,
+                        positionChoixTaillePreview,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int position) {
+
+                                positionChoixTaillePreview = position;
+
+                                String choix = arrayTaillePreview[position];
+                                int index = choix.indexOf("x");
+                                String hauteur = choix.substring(0, index - 1);
+                                String largeur = choix.substring(index + 2);
+
+                                // Mise à jour des paramètres
+                                Log.i("Item choisit", hauteur + " x " + largeur);
+                                parameters.setPreviewSize(Integer.valueOf(largeur), Integer.valueOf(hauteur));
+                                camera.stopPreview();
+                                camera.setParameters(parameters);
+                                camera.startPreview();
+                            }
+                        }
+                ).setPositiveButton("OK", null);
+                builder.show();
+                return true;
+
         }
         return super.onOptionsItemSelected(item);
     }
 
+    /**
+     * Met à jour l'affichage de la preview dans la bonne orientation
+     * @param activity
+     * @param cameraId
+     * @param camera
+     * @return
+     */
+    public static void setCameraDisplayOrientation(Activity activity,int cameraId, android.hardware.Camera camera) {
+        android.hardware.Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
+        android.hardware.Camera.getCameraInfo(cameraId, info);
+        int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+        int degrees = 0;
+        switch (rotation) {
+            case Surface.ROTATION_0: degrees = 0; break;
+            case Surface.ROTATION_90: degrees = 90; break;
+            case Surface.ROTATION_180: degrees = 180; break;
+            case Surface.ROTATION_270: degrees = 270; break;
+        }
+
+        int result;
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            result = (info.orientation + degrees) % 360;
+            result = (360 - result) % 360;  // compensate the mirror
+        } else {  // back-facing
+            result = (info.orientation - degrees + 360) % 360;
+        }
+        camera.setDisplayOrientation(result);
+    }
+
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        camera = Camera.open();
         try {
+            camera = Camera.open();
             camera.setPreviewDisplay(holder);
 
             surfaceView.setOnLongClickListener(new View.OnLongClickListener() {
@@ -228,7 +380,77 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                     return true;
                 }
             });
+
+            // Initialisations
+            Camera.CameraInfo infos = new android.hardware.Camera.CameraInfo();
+            Camera.Parameters parametres= camera.getParameters();
+
+            // Désactiver le son par défaut
+            Camera.getCameraInfo(Camera.CameraInfo.CAMERA_FACING_BACK, infos);
+            if (Build.VERSION.SDK_INT > 17)
+            {
+                if(infos.canDisableShutterSound)
+                    camera.enableShutterSound(false);
+            }
+
+            // Active les préférences
+            if (largeurPhoto != -1)
+            {
+                parametres.setPictureSize(largeurPhoto,hauteurPhoto);
+            }
+            // Utiliser les tailles optimales et rotation de la photo finale quand il faut
+            int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+            int degrees = 0;
+            int width,height;
+            switch (rotation) {
+                case Surface.ROTATION_0: degrees = 0; break;
+                case Surface.ROTATION_90: degrees = 90; break;
+                case Surface.ROTATION_180: degrees = 180; break;
+                case Surface.ROTATION_270: degrees = 270; break;
+            }
+            if(degrees == 90 || degrees == 270)
+            {
+                width = metrics.widthPixels;
+                height = metrics.heightPixels;
+            }
+            else
+            {
+                width = metrics.heightPixels;
+                height = metrics.widthPixels;
+            }
+
+            Log.i("Taille Preview",width+"w "+height+"h");
+            Camera.Size taillePreview = obtenirTaillePreviewOptimale(camera.getParameters().getSupportedPreviewSizes(),width,height);
+            parametres.setPreviewSize(taillePreview.width,taillePreview.height);
+            parametres.setJpegQuality(70);
+            parametres.setRotation(Math.abs(degrees-90)%360);
+            camera.setParameters(parametres);
+
+
+            //Obtenir les tailles actuelles
+            int it = 0;
+            for (Camera.Size i : parametres.getSupportedPictureSizes())
+            {
+                if(i.equals(parametres.getPictureSize())){
+                    positionChoixTaillePhoto = it;
+                    break;
+                }
+                it++;
+            }
+            it = 0;
+            for (Camera.Size i : parametres.getSupportedPreviewSizes())
+            {
+                if(i.equals(parametres.getPreviewSize())){
+                    positionChoixTaillePreview = it;
+                    break;
+                }
+                it++;
+            }
+            definirTailleMire();
+            camera.startPreview();
+
         } catch (Exception e) {
+            Log.e("Erreur",e.getMessage());
             camera.release();
             camera = null;
         }
@@ -242,18 +464,81 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
-
-        Camera.Parameters parameters = camera.getParameters();
-
-        List<Camera.Size> previewSizes = parameters.getSupportedPreviewSizes();
-
-        Camera.Size previewSize = previewSizes.get(1);
-        parameters.setPreviewSize(previewSize.width, previewSize.height);
-        camera.setParameters(parameters);
-        camera.startPreview();
+        setCameraDisplayOrientation(this,Camera.CameraInfo.CAMERA_FACING_BACK,camera);
     }
 
-    class RawCallback implements Camera.ShutterCallback, Camera.PictureCallback {
+    /**
+     * Calcule la taille optimale pour la preview
+     * @param tailles
+     * @param w
+     * @param h
+     * @return
+     */
+    private Camera.Size obtenirTaillePreviewOptimale(List<Camera.Size> tailles, int w, int h) {
+
+        final double ASPECT_TOLERANCE = 0.2;
+        double targetRatio = (double) w / h;
+        if (tailles == null)
+            return null;
+        Camera.Size optimalSize = null;
+        double minDiff = Double.MAX_VALUE;
+        int targetHeight = h;
+        // Cherche une taille qui respecte le ratio donné
+        for (Camera.Size size : tailles)
+        {
+            double ratio = (double) size.width / size.height;
+            Log.i("Taille Preview", "Checking size " + size.width + "w " + size.height + "h"+" ratio =" + ratio + " minDiff before =" + minDiff);
+            if (Math.abs(ratio - targetRatio) > ASPECT_TOLERANCE)
+                continue;
+            if (Math.abs(size.height - targetHeight) < minDiff)
+            {
+                optimalSize = size;
+                minDiff = Math.abs(size.height - targetHeight);
+            }
+            Log.i("Taille Preview", "minDiff after = " + minDiff + " optimalSize = " + optimalSize.width  + "w "+ optimalSize.height+"h");
+        }
+        // Si on trouve rien dessus, on ignore les entrées
+
+        if (optimalSize == null)
+        {
+            minDiff = Double.MAX_VALUE;
+            for (Camera.Size size : tailles) {
+                if (Math.abs(size.height - targetHeight) < minDiff)
+                {
+                    optimalSize = size;
+                    minDiff = Math.abs(size.height - targetHeight);
+                }
+            }
+        }
+      Log.i("Taille Preview", "Using size: " + optimalSize.width + "w " + optimalSize.height + "h");
+        return optimalSize;
+    }
+
+    /**
+    * Calcule la taille de la mire par rapport à la taille de la preview et de la photo pour correspondre à l'image finale
+     */
+    private void definirTailleMire()
+    {
+        if(camera != null)
+        {
+            Camera.Parameters parametres = camera.getParameters();
+            Camera.Size taillePreview = parametres.getPreviewSize();
+            Camera.Size taillePicture = parametres.getPictureSize();
+
+            double largeur = (double) 512/taillePicture.width*taillePreview.width;
+            double hauteur = (double) 512/taillePicture.height*taillePreview.height;
+            Log.i("Taille Mire","taille photo : " + taillePicture.width + "w " + taillePicture.height + "h");
+            Log.i("Taille Mire","taille preview : " + taillePreview.width + "w " + taillePreview.height + "h");
+            Log.i("Taille Mire",largeur + "l " + hauteur +"h");
+            int taille = (largeur>hauteur) ? (int)largeur : (int)hauteur;
+            Log.i("Taille Mire","taille =" + taille);
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(taille,taille, Gravity.CENTER);
+            ivMire.setLayoutParams(params);
+        }
+
+    }
+    // Classe appelé lors de la prise d'une photo
+    class PhotoCallback implements Camera.ShutterCallback, Camera.PictureCallback {
 
         @Override
         public void onShutter() {
@@ -274,99 +559,56 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
         @Override
         public void onPictureTaken(byte[] data, Camera camera) {
-            Boolean test = (data!=null);
-            Integer s = ((data == null) ? 0 : data.length);
-            Toast.makeText(activity, "PHOTO RAW", 10).show();
-            Toast.makeText(activity, test.toString(), 10).show();
-            Toast.makeText(activity, s.toString(), 10).show();
+            try{
+                Toast.makeText(activity, "PHOTO", 10).show();
+                Log.i("STATUT","avant start");
 
-            Camera.Size size = camera.getParameters().getPictureSize();
-            int[]photo = convertYUV420_NV21toRGB8888(data,size.width,size.height);
-            //int[] photo = new int[size.height*size.width];
-            //applyGrayScale(photo,data,size.width,size.height);
+                Log.i("STATUT","après");
 
-            for(int l=50;l<100;l++){
-                for(int c = 50; c<100; c++) {
-                    int p = 640*l+c;
-                    photo[p]=0x80ffffff; // xxRRVVBB
+                Log.i("STATUT","début");
+                new TacheEnregistrementPhoto(activity,new OnTacheEnregistrementDone()).execute(data);
+                // new TacheSauvegardePhoto().execute(subBmp);
+                Log.i("STATUT","sortie");
+                camera.startPreview();
 
-                }
+                //Log.i("PHOTO RESULTAT", resultat.toString());
+
+
             }
-            Bitmap bmp = Bitmap.createBitmap(photo, size.width, size.height, Bitmap.Config.ARGB_8888);
-            File fichierPhoto=new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "fichierPhoto.png");
-            FileOutputStream out = null;
-            try {
-                out = new FileOutputStream(fichierPhoto);
-                bmp.compress(Bitmap.CompressFormat.PNG, 90, out);
-                Log.i("ActiviteCamera","Photo PNG enregistré");
-            } catch (Exception e) {
+            catch(Exception e){
+                Log.i("Photo","Erreur : " + e.getMessage());
                 e.printStackTrace();
-            } finally {
-                try{
-                    out.close();
-                } catch(Throwable ignore) {}
+                recreate();
             }
         }
+    }
+    public class OnTacheEnregistrementDone
+    {
+        public void afficherDialog()
+        {
+            // Création du dialog pour traitement de l'image
+            LayoutInflater inflater = LayoutInflater.from(activity);
+            View vue = inflater.inflate(R.layout.dialog_traitement,null);
+            ImageView apercu = (ImageView) vue.findViewById(R.id.apercu);
+            apercu.setImageBitmap(subBmp);
 
-        /**
-         * Convertit YUV420 NV21 to RGB8888
-         *
-         * @param data byte array on YUV420 NV21 format.
-         * @param width pixels width
-         * @param height pixels height
-         * @return a RGB8888 pixels int array. Where each int is a pixels ARGB.
-         */
+            new AlertDialog.Builder(activity).setTitle("Voulez-vous continuer avec cette image ?")
+                    .setView(vue)
+                    .setPositiveButton("Oui",new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            Intent intent = new Intent(activity, ActiviteTraitement.class);
+                            intent.putExtra("dialog",true);
+                            startActivity(intent);
+                        }
+                    })
+                    .setNegativeButton("Non",new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
 
-        public int[] convertYUV420_NV21toRGB8888(byte [] data, int width, int height) {
-            int size = width*height;
-            int offset = size;
-            int[] pixels = new int[size];
-            int u, v, y1, y2, y3, y4;
-
-            // i percorre os Y and the final pixels
-            // k percorre os pixles U e V
-            for(int i=0, k=0; i < size; i+=2, k+=2) {
-                y1 = data[i  ]&0xff;
-                y2 = data[i+1]&0xff;
-                y3 = data[width+i  ]&0xff;
-                y4 = data[width+i+1]&0xff;
-
-                u = data[offset+k  ]&0xff;
-                v = data[offset+k+1]&0xff;
-                u = u-128;
-                v = v-128;
-
-                pixels[i  ] = convertYUVtoRGB(y1, u, v);
-                pixels[i+1] = convertYUVtoRGB(y2, u, v);
-                pixels[width+i  ] = convertYUVtoRGB(y3, u, v);
-                pixels[width+i+1] = convertYUVtoRGB(y4, u, v);
-
-                if (i!=0 && (i+2)%width==0)
-                    i+=width;
-            }
-
-            return pixels;
-        }
-
-        private int convertYUVtoRGB(int y, int u, int v) {
-            int r,g,b;
-
-            r = y + (int)1.402f*v;
-            g = y - (int)(0.344f*u +0.714f*v);
-            b = y + (int)1.772f*u;
-            r = r>255? 255 : r<0 ? 0 : r;
-            g = g>255? 255 : g<0 ? 0 : g;
-            b = b>255? 255 : b<0 ? 0 : b;
-            return 0xff000000 | (b<<16) | (g<<8) | r;
-        }
-
-        public void applyGrayScale(int [] pixels, byte [] data, int width, int height) {
-            int p;
-            int size = width*height;
-            for(int i = 0; i < size; i++) {
-                p = data[i] & 0xFF;
-                pixels[i] = 0xff000000 | p<<16 | p<<8 | p;
-            }
+                        }
+                    })
+                    .show();
         }
     }
 }

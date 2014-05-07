@@ -9,6 +9,9 @@ import android.graphics.Color;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import org.opencv.android.Utils;
+import org.opencv.imgproc.Imgproc;
+
 /**
  * Created by Jocelyn on 28/04/2014.
  */
@@ -18,6 +21,7 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
     private ProgressDialog dialog = null;
     private Activity activity;
     private ActiviteCamera.OnTacheEnregistrementDone callback;
+    private byte[] data;
 
     TacheEnregistrementPhoto(Activity activity,ActiviteCamera.OnTacheEnregistrementDone callback)
     {
@@ -46,6 +50,7 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
     protected Resultat doInBackground(byte[]... data) {
         try{
             publishProgress(Statut.INITIALISATION);
+            this.data = data[0];
             Log.i("STATUT","changement init");
             Bitmap bmp = BitmapFactory.decodeByteArray(data[0], 0, data[0].length);
             int x = bmp.getWidth() / 2 - 255;
@@ -54,24 +59,13 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
 
             Bitmap subBmp = bmp.createBitmap(bmp,x,y,512,512);
             bmp.recycle();
-            int[] pixels = new int[subBmp.getWidth()*subBmp.getWidth()];
-            subBmp.getPixels(pixels,0,subBmp.getWidth(),0,0,subBmp.getWidth(),subBmp.getHeight());
             publishProgress(Statut.GRAYSCALE);
             Log.i("STATUT","changement gs");
             int c = 0,l = 0;
-            for(int i = 0;i<pixels.length;i++) {
-                c=i%512;
-                l=i/512;
 
-                //Log.w("MAT IMAGE",i+"i " + c + "c " + l + "l");
-                int red = Color.red(pixels[i]);
-                int blue = Color.blue(pixels[i]);
-                int green = Color.green(pixels[i]);
-                float grayscale = (float) (0.21*red + 0.71*green + 0.07*blue);
-                //pixels[i] = grayscale;
+            Utils.bitmapToMat(subBmp, ActiviteCamera.image);
 
-                ActiviteCamera.image.put(l, c, pixels[0]);
-            }
+            Imgproc.cvtColor(ActiviteCamera.image, ActiviteCamera.image, Imgproc.COLOR_RGB2GRAY);
 
             Log.i("MAT IMAGE", ActiviteCamera.image.get(511,511)[0]+" ");
             ActiviteCamera.subBmp = subBmp;
@@ -102,7 +96,7 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
                     e.printStackTrace();
                 }
                 dialog.dismiss();
-                callback.afficherDialog();
+                callback.afficherDialog(this.data);
 
                 break;
             case ERREUR:

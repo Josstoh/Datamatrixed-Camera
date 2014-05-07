@@ -9,6 +9,7 @@ import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.highgui.Highgui;
+import org.opencv.imgproc.Imgproc;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -140,8 +141,15 @@ public class ActiviteTraitement extends Activity {
         else
         {
             try {
-                grayscaleMatrix = ActiviteCamera.image;
+
+
+
+                //grayscaleMatrix = ActiviteCamera.image;
+                grayscaleMatrix=new Mat();
+                grayscaleMatrix=ActiviteCamera.image;
+
                 img.setImageBitmap(ActiviteCamera.subBmp);
+
             }
             catch(Exception e)
             {

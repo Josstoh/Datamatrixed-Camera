@@ -6,7 +6,9 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.SoundPool;
@@ -68,6 +70,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     private int positionChoixTaillePhoto = -1;
     private int positionChoixTaillePreview = -1;
     private ImageView ivMire;
+    private MenuItem focusAuto;
+    private MenuItem focusMacro;
 
     // Attribut test pour openCV
     private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
@@ -78,7 +82,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                 {
                     Log.i(TAG, "OpenCV loaded successfully");
                     // Création de la matrice image
-                    image = new Mat(512,512,CvType.CV_8UC1);
+                   image = new Mat(512,512,CvType.CV_8UC1);
                 } break;
                 default:
                 {
@@ -215,6 +219,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         super.onCreateOptionsMenu(menu);
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main, menu);
+        focusMacro = menu.findItem(R.id.menu_focusMacro);
+        focusAuto = menu.findItem(R.id.menu_focusAuto);
         return true;
     }
 
@@ -232,6 +238,19 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
 
         switch(item.getItemId())
         {
+            case R.id.menu_focusAuto:
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+                camera.setParameters(parameters);
+                focusAuto.setChecked(true);
+                Log.i("FOCUS","Auto");
+                break;
+
+            case R.id.menu_focusMacro:
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_MACRO);
+                focusMacro.setChecked(true);
+                Log.i("FOCUS","Macro");
+                break;
+
             case R.id.menu_taillePhoto:
                 List<Camera.Size> pictureSizes = parameters.getSupportedPictureSizes();
                 for (Camera.Size i : pictureSizes)
@@ -424,6 +443,16 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             parametres.setPreviewSize(taillePreview.width,taillePreview.height);
             parametres.setJpegQuality(70);
             parametres.setRotation(Math.abs(degrees-90)%360);
+
+            ArrayList<Camera.Area> areas = new ArrayList<Camera.Area>();
+            areas.add(new Camera.Area(new Rect(-100,-100,100,100),600));
+            if(parametres.getMaxNumFocusAreas()>0){
+                parametres.setFocusAreas(areas);
+                Log.i("FOCUS","FOCUS AREA utilisable"+ parametres.getMaxNumFocusAreas());
+            }
+
+
+            // MAJ des paramètres
             camera.setParameters(parametres);
 
 
@@ -561,19 +590,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         public void onPictureTaken(byte[] data, Camera camera) {
             try{
                 Toast.makeText(activity, "PHOTO", 10).show();
-                Log.i("STATUT","avant start");
-
-                Log.i("STATUT","après");
-
-                Log.i("STATUT","début");
                 new TacheEnregistrementPhoto(activity,new OnTacheEnregistrementDone()).execute(data);
-                // new TacheSauvegardePhoto().execute(subBmp);
-                Log.i("STATUT","sortie");
                 camera.startPreview();
-
-                //Log.i("PHOTO RESULTAT", resultat.toString());
-
-
             }
             catch(Exception e){
                 Log.i("Photo","Erreur : " + e.getMessage());
@@ -584,7 +602,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     }
     public class OnTacheEnregistrementDone
     {
-        public void afficherDialog()
+        public void afficherDialog(byte[] data)
         {
             // Création du dialog pour traitement de l'image
             LayoutInflater inflater = LayoutInflater.from(activity);
@@ -600,6 +618,12 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                             Intent intent = new Intent(activity, ActiviteTraitement.class);
                             intent.putExtra("dialog",true);
                             startActivity(intent);
+                        }
+                    })
+                    .setNeutralButton("Enregistrer sur l'image",new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            new TacheSauvegardePhoto().execute(subBmp);
                         }
                     })
                     .setNegativeButton("Non",new DialogInterface.OnClickListener() {

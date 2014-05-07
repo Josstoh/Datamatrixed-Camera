@@ -778,12 +778,14 @@ public Mat profils(Mat imRedressee )   {
       }
     System.out.println(" kk "+ max+ "  tt " + posmax);
      n=posmax;
-     Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(255) ); 
+     Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(255) );
+    Log.i("Ligne 1","n="+n+"("+0+","+signatureProfil[n][3]+")"+" ("+255+","+signatureProfil[n][3]+")");
      int delta=(int) (signatureProfil[n][3]-signatureProfil[n-2][3]);
      n=posmax;
      while((delta>7) && (delta<14) && (n>2)){
      	n=n-2;
      	Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(0,255,0) );
+         Log.i("Ligne 2","n="+n+"("+0+","+signatureProfil[n][3]+")"+" ("+255+","+signatureProfil[n][3]+")");
      	delta=  (int) (signatureProfil[n][3]-signatureProfil[n-2][3]);
      	
      }
@@ -792,6 +794,7 @@ public Mat profils(Mat imRedressee )   {
       while((delta>7) && (delta<14) && (n<NombreZones-2)){
       n=n+2;
       Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(0,255,0) );
+          Log.i("Ligne 3","n="+n+"("+0+","+signatureProfil[n][3]+")"+" ("+255+","+signatureProfil[n][3]+")");
       delta=(int) (signatureProfil[n+2][3]-signatureProfil[n][3]);
       }
      
@@ -822,7 +825,8 @@ System.out.println("Test 1");
     System.out.println("Test 2");
     
     n=posmax;
-    Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3],0), new org.opencv.core.Point(signatureProfilColonne[n][3],255), new Scalar(255) ); 
+    Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3],0), new org.opencv.core.Point(signatureProfilColonne[n][3],255), new Scalar(255) );
+    Log.i("Ligne 4","n="+n+"("+signatureProfil[n][3]+","+0+")"+" ("+signatureProfil[n][3]+","+255+")");
      
     System.out.println("Test 3");
      delta=(int) (signatureProfilColonne[n][3]-signatureProfilColonne[n-2][3]);
@@ -832,6 +836,7 @@ System.out.println("Test 1");
     	
      System.out.println(" "+signatureProfilColonne[n][3]);    	
     	Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3],0), new org.opencv.core.Point(signatureProfilColonne[n][3],255), new Scalar(0,255,0) );
+        Log.i("Ligne 5","n="+n+"("+signatureProfil[n][3]+","+0+")"+" ("+signatureProfil[n][3]+","+255+")");
     	delta=  (int) (signatureProfilColonne[n][3]-signatureProfilColonne[n-2][3]);
     }
     n=posmax;
@@ -845,6 +850,7 @@ System.out.println("Test 1");
     while((delta>7) && (delta<14) && (n<NombreZones-2)){
     n=n+2;
     Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3],0), new org.opencv.core.Point(signatureProfilColonne[n][3],255), new Scalar(0,255,0) );
+        Log.i("Ligne 6","n="+n+"("+signatureProfil[n][3]+","+0+")"+" ("+signatureProfil[n][3]+","+255+")");
     delta=(int) (signatureProfilColonne[n+2][3]-signatureProfilColonne[n][3]);
     }
 

@@ -12,4 +12,17 @@
         android:title="@string/menu_taillePhoto"
         android:orderInCategory="1"
         app:showAsAction="never" />
+    <group android:id="@+id/focus"
+        android:checkableBehavior="single"
+        >
+        <item android:id="@+id/menu_focusMacro"
+            android:title="Macro"
+            />
+        <item android:id="@+id/menu_focusAuto"
+            android:title="Auto"
+            android:checked="true"
+           />
+    </group>
+
+
 </menu>

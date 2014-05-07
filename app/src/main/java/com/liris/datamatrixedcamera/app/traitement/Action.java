@@ -779,6 +779,7 @@ public Mat profils(Mat imRedressee )   {
     System.out.println(" kk "+ max+ "  tt " + posmax);
      n=posmax;
      Core.line(imRedressee, new org.opencv.core.Point(0,signatureProfil[n][3]), new org.opencv.core.Point(255,signatureProfil[n][3]), new Scalar(255) );
+
     Log.i("Ligne 1","n="+n+"("+0+","+signatureProfil[n][3]+")"+" ("+255+","+signatureProfil[n][3]+")");
      int delta=(int) (signatureProfil[n][3]-signatureProfil[n-2][3]);
      n=posmax;

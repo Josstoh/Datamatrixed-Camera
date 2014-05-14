@@ -141,15 +141,10 @@ public class ActiviteTraitement extends Activity {
         else
         {
             try {
-
-
-
-                //grayscaleMatrix = ActiviteCamera.image;
                 grayscaleMatrix=new Mat();
                 grayscaleMatrix=ActiviteCamera.image;
 
                 img.setImageBitmap(ActiviteCamera.subBmp);
-
             }
             catch(Exception e)
             {
@@ -203,10 +198,77 @@ public class ActiviteTraitement extends Activity {
                         Utils.matToBitmap(profil, img_bitmp);
                         img.setImageBitmap(img_bitmp);
                         System.out.println("End");
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+
+                        int[][] datamatrix = calculDatamatrix();
+                        for(int i = 0; i<14;i++) {
+                            for (int j = 0; j < 14; j++) {
+                                System.out.print(datamatrix[i][j]);
+                            }
+                            System.out.print("\n");
+                        }
                     }
 
                 });
 
+    }
+
+    private int[][] calculDatamatrix()
+    {
+        double[]coordsV = Action.coordsVerticales;
+        double[]coordsH = Action.coordsHorizontales;
+        double[][]ndGFond = new double[14][14];
+        int[][]datamatrix = new int[14][14];
+
+        for(int i = 1; i<15;i++)
+        {
+            for(int j = 1; j<15; j++)
+            {
+                // Calcul du niveau de gris du fond de chaque case
+                double moyFond=0;
+                int passage = 0;
+                int it = (int)coordsV[j]+1;
+                int it2 = (int) coordsH[i]+1;
+                while (it<=coordsV[j+1]-1)
+                {
+                    moyFond = (moyFond + autocseuil.get((int)coordsH[i]+1,it)[0] + autocseuil.get((int)coordsH[i+1]-1,it)[0]);
+                    passage++;
+                    it++;
+                }
+                while (it2<=coordsH[i+1]-1)
+                {
+                    moyFond = (moyFond + autocseuil.get(it2,(int)coordsV[j]+1)[0] + autocseuil.get((int)coordsV[j+1]-1,it2)[0]);
+                    passage++;
+                    it2++;
+                }
+                moyFond/=(passage*4);
+                Log.i("FOND", moyFond+"");
+
+                // Calcul du niveau de gris du centre de chaque case
+                double moyCentre = 0;
+                moyCentre += autocseuil.get((int)coordsH[i]+4,(int)coordsV[j]+4)[0];
+                moyCentre += autocseuil.get((int)coordsH[i]+4,(int)coordsV[j]+5)[0];
+                moyCentre += autocseuil.get((int)coordsH[i]+5,(int)coordsV[j]+4)[0];
+                moyCentre += autocseuil.get((int)coordsH[i]+5,(int)coordsV[j]+5)[0];
+                moyCentre/=4;
+                Log.i("CENTRE",moyCentre+"");
+
+                double difference = moyCentre - moyFond;
+                Log.i("DIFFERENCE","-------->"+difference+"<-------------");
+                if(difference < 20)
+                {
+                    datamatrix[i-1][j-1] = 0;
+                }
+                else {
+                    datamatrix[i-1][j-1] = 1;
+                }
+            }
+        }
+        return datamatrix;
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -227,31 +289,53 @@ public class ActiviteTraitement extends Activity {
         }
     }
 
-    public String getRealPathFromURI(Context context, Uri contentUri) {
+    private void doBinary()
+    {
+        grayscaleMatrix=new Mat();
+        grayscaleMatrix=ActiviteCamera.image;
+        img.setImageBitmap(ActiviteCamera.subBmp);
+        // Binary
+        autoCorr= action.autoCorrelation( grayscaleMatrix);
+        autoCorr.convertTo(autoCorr, CvType.CV_8UC1);
+        Bitmap img_bitmp = Bitmap.createBitmap(autoCorr.cols(), autoCorr.rows(),Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(autoCorr, img_bitmp);
+        img.setImageBitmap(img_bitmp);
+        System.out.println("End");
+    }
+    private void doMaxExtraction()
+    {
+        // Extraction
+        Mat x=autoCorr.submat(new org.opencv.core.Rect(0,0,512,512));
+        autocseuil= action.maxExtraction_( autoCorr,512,grayscaleMatrix);
+        autocseuil.convertTo(autocseuil, CvType.CV_8UC1);
+        Bitmap img_bitmp = Bitmap.createBitmap(autocseuil.cols(), autocseuil.rows(),Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(autocseuil, img_bitmp);
+        img.setImageBitmap(img_bitmp);
+        System.out.println("End");
+    }
 
-        Cursor cursor = null;
+    private void doProfil()
+    {
+        // Profil
+        Mat profil= action. profils( autocseuil);
+        profil.convertTo(profil, CvType.CV_8UC1);
+        Bitmap img_bitmp = Bitmap.createBitmap(profil.cols(), profil.rows(),Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(profil, img_bitmp);
+        img.setImageBitmap(img_bitmp);
+        System.out.println("End");
         try {
-            String[] proj = { MediaStore.Images.Media.DATA };
-            cursor = context.getContentResolver().query(contentUri,  proj, null, null, null);
-            Log.i("Choix de l'image", ((Boolean) cursor.isNull(0)).toString());
-            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-            Log.i("Choix de l'image", "column_index = " + String.valueOf(column_index));
-            cursor.moveToFirst();
-            return cursor.getString(column_index);
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
-        }
-        catch(Exception e) {
-            Log.i("Choix de l'image","Erreur lors de la conversion : " + e.getMessage());
-            return null;
-        }
-        finally {
-            if (cursor != null) {
-                cursor.close();
+        int[][] datamatrix = calculDatamatrix();
+        for(int i = 0; i<14;i++) {
+            for (int j = 0; j < 14; j++) {
+                System.out.print(datamatrix[i][j]);
             }
-
+            System.out.print("\n");
         }
-
-
     }
 
     public Bary remplir(Mat input, int l, int c) {

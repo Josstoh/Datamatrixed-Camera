@@ -105,9 +105,9 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_8, this, mOpenCVCallBack))
         {
             Log.e("", "Cannot connect to OpenCV Manager");
-            new AlertDialog.Builder(activity).setTitle("Oups...")
-                    .setMessage("OpenCV Manager n'est pas installé sur votre appareil Android : cette application ne peut pas fonctionner... :-( \n Vous allez être rediriger vers la fiche market de OpencCV Manager...")
-                    .setPositiveButton("Ok... :-(",new DialogInterface.OnClickListener() {
+            new AlertDialog.Builder(activity).setTitle("Oups !")
+                    .setMessage("OpenCV Manager n'est pas installé sur votre appareil Android : cette application ne peut pas fonctionner ! :-( \n Vous allez être rediriger vers la fiche market de OpencCV Manager...")
+                    .setPositiveButton("Ok !",new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
                             finish();
@@ -123,7 +123,13 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                                 startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://play.google.com/store/apps/details?id=" + appPackageName)));
                             }
                         }
-                    }).show();
+                    }).setNegativeButton("Sortez moi de là !!",new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    finish();
+                }
+            })
+                    .show();
 
         }
 

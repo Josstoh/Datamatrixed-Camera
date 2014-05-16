@@ -1,6 +1,20 @@
 package com.liris.datamatrixedcamera.app.traitement;
 
-import java.util.Vector;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.ImageView;
+
+import com.liris.datamatrixedcamera.app.ActiviteCamera;
+import com.liris.datamatrixedcamera.app.R;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -9,37 +23,22 @@ import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.highgui.Highgui;
-import org.opencv.imgproc.Imgproc;
 
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.Context;
-import android.content.Intent;
-import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.net.Uri;
-import android.os.Bundle;
-import android.provider.MediaStore;
-import android.util.Log;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.widget.Button;
-import android.widget.ImageView;
+import java.util.Vector;
 
 //import com.googlecode.javacv.cpp.opencv_core.CvScalar;
 //import com.googlecode.javacv.cpp.opencv_core.IplImage;import android.widget.Toast;
 
-import com.liris.datamatrixedcamera.app.ActiviteCamera;
-import com.liris.datamatrixedcamera.app.R;
-
 public class ActiviteTraitement extends Activity {
 
     Uri url_images;
+    Activity activity;
     private static final int SELECT_PICTURE = 1;
     private static final int ZONE_PICTURE = 2;
     private static final int Gray_Scale = 3;
     private static final int Binary = 4;
     private static final int Extraction = 5;
+    private Bitmap apercu;
     private String selectedImagePath = null;
     private Mat submatrice;
     private Mat grayscaleMatrix;
@@ -69,12 +68,38 @@ public class ActiviteTraitement extends Activity {
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        this.activity = this;
         setContentView(R.layout.activite_traitement);
 
         img = (ImageView) findViewById(R.id.ImageView01);
+        img.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Création du dialog pour traitement de l'image
+                LayoutInflater inflater = LayoutInflater.from(activity);
+                View vue = inflater.inflate(R.layout.dialog_traitement_zoom,null);
+                ImageView imApercu = (ImageView) vue.findViewById(R.id.apercu);
+                imApercu.setImageBitmap(apercu);
+
+                new AlertDialog.Builder(activity).setTitle("Zoom")
+                        .setView(vue)
+                        .setPositiveButton("Ok",null)
+                        .show();
+            }
+        });
         if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_2, this, mOpenCVCallBack)) {
             Log.e("TEST", "Cannot connect to OpenCV Manager");
         }
+
+        ((Button) findViewById(R.id.bOneShot))
+                .setOnClickListener(new OnClickListener() {
+                    public void onClick(View arg0) {
+                        doBinary();
+                        doMaxExtraction();
+                        doProfil();
+                    }
+                });
+
 
         // dialog == true si on ne passe pas par un fichier mais directement depuis la Mat image
         boolean dialog = getIntent().getBooleanExtra("dialog", false);
@@ -194,15 +219,10 @@ public class ActiviteTraitement extends Activity {
                         Mat profil= action. profils( autocseuil);
                         //Mat ess_var=autocseuil.submat(new org.opencv.core.Rect(192,192,128,128));
                         profil.convertTo(profil, CvType.CV_8UC1);
-                        Bitmap img_bitmp = Bitmap.createBitmap(profil.cols(), profil.rows(),Bitmap.Config.ARGB_8888);
-                        Utils.matToBitmap(profil, img_bitmp);
-                        img.setImageBitmap(img_bitmp);
-                        System.out.println("End");
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+                        apercu = Bitmap.createBitmap(profil.cols(), profil.rows(),Bitmap.Config.ARGB_8888);
+                        Utils.matToBitmap(profil, apercu);
+                        img.setImageBitmap(apercu);
+
 
                         int[][] datamatrix = calculDatamatrix();
                         for(int i = 0; i<14;i++) {
@@ -250,16 +270,24 @@ public class ActiviteTraitement extends Activity {
 
                 // Calcul du niveau de gris du centre de chaque case
                 double moyCentre = 0;
-                moyCentre += autocseuil.get((int)coordsH[i]+4,(int)coordsV[j]+4)[0];
-                moyCentre += autocseuil.get((int)coordsH[i]+4,(int)coordsV[j]+5)[0];
-                moyCentre += autocseuil.get((int)coordsH[i]+5,(int)coordsV[j]+4)[0];
-                moyCentre += autocseuil.get((int)coordsH[i]+5,(int)coordsV[j]+5)[0];
-                moyCentre/=4;
+                int centreH = (int) (coordsH[i+1] - coordsH[i])/2;
+                int centreV = (int) (coordsV[j+1] - coordsV[j])/2;
+                Log.i("CENTRE","centreH("+coordsH[i+1] +"-"+ coordsH[i]+")="+centreH+" centreV("+coordsV[j+1] +"-"+ coordsV[j]+")="+centreV);
+                for(int l = (int)coordsH[i]+centreH -3;l<(int)coordsH[i]+centreH+3;l++)
+                {
+                    for(int c = (int)coordsV[j]+centreV -3;c<(int)coordsV[j]+centreV+3;c++)
+                    {
+                        moyCentre += autocseuil.get(l,c)[0];
+                    }
+                }
+                moyCentre/=36;
                 Log.i("CENTRE",moyCentre+"");
 
                 double difference = moyCentre - moyFond;
+                double ratio = moyCentre/moyFond;
                 Log.i("DIFFERENCE","-------->"+difference+"<-------------");
-                if(difference < 20)
+                Log.i("RATIO","-------->"+ratio+"<-------------");
+                if(ratio < 2.0)
                 {
                     datamatrix[i-1][j-1] = 0;
                 }
@@ -291,9 +319,7 @@ public class ActiviteTraitement extends Activity {
 
     private void doBinary()
     {
-        grayscaleMatrix=new Mat();
-        grayscaleMatrix=ActiviteCamera.image;
-        img.setImageBitmap(ActiviteCamera.subBmp);
+
         // Binary
         autoCorr= action.autoCorrelation( grayscaleMatrix);
         autoCorr.convertTo(autoCorr, CvType.CV_8UC1);
@@ -319,15 +345,11 @@ public class ActiviteTraitement extends Activity {
         // Profil
         Mat profil= action. profils( autocseuil);
         profil.convertTo(profil, CvType.CV_8UC1);
-        Bitmap img_bitmp = Bitmap.createBitmap(profil.cols(), profil.rows(),Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(profil, img_bitmp);
-        img.setImageBitmap(img_bitmp);
+        apercu = Bitmap.createBitmap(profil.cols(), profil.rows(),Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(profil, apercu);
+        img.setImageBitmap(apercu);
         System.out.println("End");
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+
 
         int[][] datamatrix = calculDatamatrix();
         for(int i = 0; i<14;i++) {

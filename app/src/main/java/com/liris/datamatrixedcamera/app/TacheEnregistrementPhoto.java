@@ -66,8 +66,7 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
             Utils.bitmapToMat(subBmp, ActiviteCamera.image);
 
             Imgproc.cvtColor(ActiviteCamera.image, ActiviteCamera.image, Imgproc.COLOR_RGB2GRAY);
-
-            Log.i("MAT IMAGE", ActiviteCamera.image.get(511,511)[0]+" ");
+            Utils.matToBitmap(ActiviteCamera.image,subBmp);
             ActiviteCamera.subBmp = subBmp;
             publishProgress(Statut.TERMINE);
             Log.i("STATUT","changement terminé");

@@ -24,8 +24,8 @@ import android.util.Log;
 
 public class Action {
 
-    static double[]coordsVerticales = new double[17];
-    static double[]coordsHorizontales = new double[17];
+    static double[]coordsVerticales = new double[50];
+    static double[]coordsHorizontales = new double[50];
 //static	Mat autocseuil;
 //------------------------------------GrayScale----------------------------------------------------------//	
     public Mat grayScale(Mat tmp) {
@@ -757,7 +757,7 @@ public class Action {
         n = posmax;
         while ((delta > 7) && (delta < 14) && (n > 2)) {
             n = n - 2;
-            Core.line(imRedressee, new org.opencv.core.Point(0, signatureProfil[n][3]), new org.opencv.core.Point(255, signatureProfil[n][3]), new Scalar(0, 255, 0));
+            Core.line(imRedressee, new org.opencv.core.Point(0, signatureProfil[n][3]), new org.opencv.core.Point(255, signatureProfil[n][3]), new Scalar(0, 200, 0));
             delta = (int) (signatureProfil[n][3] - signatureProfil[n - 2][3]);
 
         }
@@ -775,7 +775,7 @@ public class Action {
         delta = (int) (signatureProfil[n + 2][3] - signatureProfil[n][3]);
         while ((delta > 7) && (delta < 14) && (n < NombreZones - 2)) {
             n = n + 2;
-            Core.line(imRedressee, new org.opencv.core.Point(0, signatureProfil[n][3]), new org.opencv.core.Point(255, signatureProfil[n][3]), new Scalar(0, 255, 0));
+            Core.line(imRedressee, new org.opencv.core.Point(0, signatureProfil[n][3]), new org.opencv.core.Point(255, signatureProfil[n][3]), new Scalar(0, 200, 0));
             // Joss
             coordsHorizontales[it] = signatureProfil[n][3];
             it++;
@@ -808,7 +808,7 @@ public class Action {
         System.out.println("Test 2");
 
         n = posmax;
-        Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3], 0), new org.opencv.core.Point(signatureProfilColonne[n][3], 255), new Scalar(255));
+        Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3], 0), new org.opencv.core.Point(signatureProfilColonne[n][3], 255), new Scalar(200));
 
         // Joss
         posMaxVerticale = n;
@@ -820,7 +820,7 @@ public class Action {
             n = n - 2;
 
             System.out.println(" " + signatureProfilColonne[n][3]);
-            Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3], 0), new org.opencv.core.Point(signatureProfilColonne[n][3], 255), new Scalar(0, 255, 0));
+            Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3], 0), new org.opencv.core.Point(signatureProfilColonne[n][3], 255), new Scalar(0, 200, 0));
             delta = (int) (signatureProfilColonne[n][3] - signatureProfilColonne[n - 2][3]);
         }
         // Joss
@@ -840,7 +840,7 @@ public class Action {
 
         while ((delta > 7) && (delta < 14) && (n < NombreZones - 2)) {
             n = n + 2;
-            Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3], 0), new org.opencv.core.Point(signatureProfilColonne[n][3], 255), new Scalar(0, 255, 0));
+            Core.line(imRedressee, new org.opencv.core.Point(signatureProfilColonne[n][3], 0), new org.opencv.core.Point(signatureProfilColonne[n][3], 255), new Scalar(0, 200, 0));
             // Joss
             coordsVerticales[it] = signatureProfil[n][3];
             it++;

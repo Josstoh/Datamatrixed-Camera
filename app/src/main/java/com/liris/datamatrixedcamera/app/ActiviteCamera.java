@@ -6,6 +6,7 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
@@ -22,18 +23,22 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import com.liris.datamatrixedcamera.app.traitement.ActiviteTraitement;
 
@@ -51,7 +56,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     // Général
     static public Activity activity;
     static public Mat image;
-    static  public Bitmap subBmp;
+    static public Bitmap subBmp;
+    static public ToggleButton bMode;
 
     // Constantes
     private String optionsTaillePhoto = "TAILLE_PHOTO";
@@ -72,6 +78,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
     private ImageView ivMire;
     private MenuItem focusAuto;
     private MenuItem focusMacro;
+    private int posX = -1;
+    private int posY = -1;
 
     // Attribut test pour openCV
     private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
@@ -97,6 +105,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         super.onCreate(savedInstanceState);
 
         // Attributions
+
         activity = this;
         this.callback = new PhotoCallback();
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
@@ -159,6 +168,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         });
         idSonPhoto = soundPool.load(this, R.raw.mario_coin_sound, 1);
 
+
         // Controles
         LayoutInflater inflater = LayoutInflater.from(getBaseContext());
         View vueControles = inflater.inflate(R.layout.controles,null);
@@ -167,6 +177,77 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                 LayoutParams.MATCH_PARENT);
         this.addContentView(vueControles, layoutParamsControl);
 
+        if(vueControles != null)
+            vueControles.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v,MotionEvent event) {
+                    if(bMode.isChecked())
+                    {
+                        posX = (int)event.getX();
+                        posY = (int)event.getY();
+                        int hauteurMire = (metrics.heightPixels<metrics.widthPixels)?metrics.heightPixels:metrics.widthPixels;
+                        final FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(ivMire.getLayoutParams());
+                        Log.i("MoveMire","hauteurmire "+hauteurMire);
+                        Log.i("MoveMire",metrics.widthPixels+"w "+metrics.heightPixels+"h");
+
+                        // Ecran portrait
+                        if(metrics.heightPixels>metrics.widthPixels)
+                        {
+                            if(posY<hauteurMire/2){
+                                layoutParams.leftMargin = 0;
+                                layoutParams.topMargin = 0;
+                                posX = -2;
+                                posY = -2;
+                            }
+                            else{
+                                if(posY >(metrics.heightPixels - hauteurMire + hauteurMire/2)){
+                                    layoutParams.leftMargin = 0;
+                                    layoutParams.topMargin = metrics.heightPixels - hauteurMire;
+                                    posX = -3;
+                                    posY = -3;
+                                }
+                                else
+                                {
+                                    layoutParams.leftMargin = 0;
+                                    layoutParams.topMargin = posY-hauteurMire/2;
+
+                                }
+                            }
+                        }
+                        // Ecran paysage
+                        else {
+                            if(posX<hauteurMire/2){
+                                layoutParams.leftMargin = 0;
+                                layoutParams.topMargin = 0;
+                                posX = -2;
+                                posY = -2;
+                            }
+                            else{
+                                if(posX >(metrics.widthPixels - hauteurMire + hauteurMire/2)){
+                                    layoutParams.leftMargin = metrics.widthPixels - hauteurMire;
+                                    layoutParams.topMargin = 0;
+                                    posX = -3;
+                                    posY = -3;
+                                }
+                                else
+                                {
+                                    layoutParams.topMargin = 0;
+                                    layoutParams.leftMargin = posX-hauteurMire/2;
+
+                                }
+                            }
+                        }
+
+                        ivMire.setLayoutParams(layoutParams);
+                    }
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                        case MotionEvent.ACTION_MOVE:
+                        case MotionEvent.ACTION_UP:
+                    }
+                    return true;
+                }
+            });
         ImageButton bPhoto = (ImageButton) findViewById(R.id.bPhoto);
         ImageButton bMenu = (ImageButton) findViewById(R.id.bMenu);
 
@@ -174,6 +255,16 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         ivMire = (ImageView) findViewById(R.id.ivMire);
         ivMire.setLayoutParams(layoutParams);
         Button bTraitement = (Button) findViewById(R.id.bTraitement);
+        bMode = (ToggleButton) findViewById(R.id.bMode);
+        Log.i("bMode",bMode.isChecked()+"");
+
+
+        // Si on restaure l'activité
+        if( savedInstanceState != null ) {
+            bMode.setChecked(savedInstanceState.getBoolean("bMode"));
+            Log.i("bMode",savedInstanceState.getBoolean("bMode")+"aprèssauv");
+
+        }
 
         // Gestion des listeners
         bPhoto.setOnClickListener(new View.OnClickListener() {
@@ -208,11 +299,58 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             }
         });
 
+        bMode.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if(camera != null)
+                {
+                    String choix = new String();
+                    if(bMode.isChecked()){
+                        choix = "Loupe";
+                        int hauteur = (metrics.heightPixels<metrics.widthPixels)?metrics.heightPixels:metrics.widthPixels;
+                        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(hauteur,hauteur, Gravity.CENTER);
+                        ivMire.setLayoutParams(layoutParams);
+                        Camera.Size taillePhoto = obtenirTaillePhotoOptimale(camera.getParameters().getSupportedPictureSizes());
+                        Camera.Parameters parametres = camera.getParameters();
+                        parametres.setPictureSize(taillePhoto.width,taillePhoto.height);
+                        camera.setParameters(parametres);
+                    }
+
+                    else{
+                        choix = "Normal";
+                        definirTailleMire();
+
+                    }
+
+                    Toast.makeText(activity,"Mode " + choix + " sélectionné",10).show();
+                }
+
+            }
+        });
+
 
         // On restaure les paramètres enregistrés
         SharedPreferences settings = getSharedPreferences(optionsTaillePhoto, 0);
         largeurPhoto = settings.getInt("largeur",-1);
         hauteurPhoto = settings.getInt("hauteur", -1);
+    }
+
+    private void onbModeChecked()
+    {
+        int hauteur = (metrics.heightPixels<metrics.widthPixels)?metrics.heightPixels:metrics.widthPixels;
+        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(hauteur,hauteur, Gravity.CENTER);
+        ivMire.setLayoutParams(layoutParams);
+        Camera.Size taillePhoto = obtenirTaillePhotoOptimale(camera.getParameters().getSupportedPictureSizes());
+        Camera.Parameters parametres = camera.getParameters();
+        parametres.setPictureSize(taillePhoto.width,taillePhoto.height);
+        camera.setParameters(parametres);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Log.i("bMode",bMode.isChecked()+"sauv");
+        outState.putBoolean("bMode",bMode.isChecked());
     }
 
     @Override
@@ -393,6 +531,9 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             camera = Camera.open();
             camera.setPreviewDisplay(holder);
 
+            if(bMode.isChecked())
+                onbModeChecked();
+
             surfaceView.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View view) {
@@ -502,6 +643,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         setCameraDisplayOrientation(this,Camera.CameraInfo.CAMERA_FACING_BACK,camera);
     }
 
+
+
     /**
      * Calcule la taille optimale pour la preview
      * @param tailles
@@ -549,12 +692,52 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         return optimalSize;
     }
 
+    private Camera.Size obtenirTaillePhotoOptimale(List<Camera.Size> tailles) {
+
+        final double ASPECT_TOLERANCE = 0.2;
+        double targetRatio = (double) 16/9;
+        if (tailles == null)
+            return null;
+        Camera.Size optimalSize = null;
+        double minDiff = Double.MAX_VALUE;
+        int targetHeight = 1024;
+        // Cherche une taille qui respecte le ratio donné
+        for (Camera.Size size : tailles)
+        {
+            double ratio = (double) size.width / size.height;
+            Log.i("Taille Preview", "Checking size " + size.width + "w " + size.height + "h"+" ratio =" + ratio + " minDiff before =" + minDiff);
+            if (Math.abs(ratio - targetRatio) > ASPECT_TOLERANCE)
+                continue;
+            if (Math.abs(size.height - targetHeight) < minDiff)
+            {
+                optimalSize = size;
+                minDiff = Math.abs(size.height - targetHeight);
+            }
+            Log.i("Taille Preview", "minDiff after = " + minDiff + " optimalSize = " + optimalSize.width  + "w "+ optimalSize.height+"h");
+        }
+        // Si on trouve rien dessus, on ignore les entrées
+
+        if (optimalSize == null)
+        {
+            minDiff = Double.MAX_VALUE;
+            for (Camera.Size size : tailles) {
+                if (Math.abs(size.height - targetHeight) < minDiff)
+                {
+                    optimalSize = size;
+                    minDiff = Math.abs(size.height - targetHeight);
+                }
+            }
+        }
+        Log.i("Taille Preview", "Using size: " + optimalSize.width + "w " + optimalSize.height + "h");
+        return optimalSize;
+    }
+
     /**
     * Calcule la taille de la mire par rapport à la taille de la preview et de la photo pour correspondre à l'image finale
      */
     private void definirTailleMire()
     {
-        if(camera != null)
+        if(camera != null && !bMode.isChecked())
         {
             Camera.Parameters parametres = camera.getParameters();
             Camera.Size taillePreview = parametres.getPreviewSize();
@@ -596,7 +779,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
         public void onPictureTaken(byte[] data, Camera camera) {
             try{
                 Toast.makeText(activity, "PHOTO", 10).show();
-                new TacheEnregistrementPhoto(activity,new OnTacheEnregistrementDone()).execute(data);
+                boolean portrait = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
+                new TacheEnregistrementPhoto(activity,new OnTacheEnregistrementDone(),bMode.isChecked(),portrait,posX,posY).execute(data);
                 camera.startPreview();
             }
             catch(Exception e){

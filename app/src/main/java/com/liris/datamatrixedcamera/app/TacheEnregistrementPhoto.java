@@ -23,11 +23,19 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
     private ActiviteCamera.OnTacheEnregistrementDone callback;
     private byte[] data;
 
-    TacheEnregistrementPhoto(Activity activity,ActiviteCamera.OnTacheEnregistrementDone callback)
+    private int posX;
+    private int posY;
+    private int taille;
+    private boolean portrait;
+
+    TacheEnregistrementPhoto(Activity activity,ActiviteCamera.OnTacheEnregistrementDone callback,boolean mode,boolean portrait,int x,int y)
     {
         this.activity = activity;
         this.callback = callback;
-
+        this.taille = mode ? 1024 : 512;
+        this.posX = x;
+        this.posY = y;
+        this.portrait = portrait;
     }
 
     @Override
@@ -42,8 +50,6 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
                         cancel(true);
                     }
                 });
-        Log.i("STATUT","création dialog et aff");
-
     }
 
     @Override
@@ -53,11 +59,50 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
             this.data = data[0];
             Log.i("STATUT","changement init");
             Bitmap bmp = BitmapFactory.decodeByteArray(data[0], 0, data[0].length);
-            int x = bmp.getWidth() / 2 - 255;
-            int y = bmp.getHeight() / 2 - 255;
+            int x,y;
+            if(ActiviteCamera.bMode.isChecked()) {
+                if (posX == -1) {
+                    x = bmp.getWidth() / 2 - (taille / 2 - 1);
+                    y = bmp.getHeight() / 2 - (taille / 2 - 1);
+                } else {
+                    if (portrait) {
+                        if (posY == -2) {
+                            x = 0;
+                            y = 0;
+                        } else {
+                            if (posY == -3) {
+                                x = 0;
+                                y = 960 - 540;
+                            } else {
+                                x = 0;
+                                y = posY;
+                            }
+                        }
+                    } else {
+                        if (posX == -2) {
+                            x = 0;
+                            y = 0;
+                        } else {
+                            if (posX == -3) {
+                                x = 960 - 540;
+                                y = 0;
+                            } else {
+                                x = posX - 270;
+                                y = 0;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                x = bmp.getWidth() / 2 - (taille/2-1);
+                y = bmp.getHeight() / 2 - (taille/2-1);
+            }
+
             Log.i("SubBMP", "bmp h = " + bmp.getHeight() + " bmp w = " + bmp.getWidth() + " x = " + x + " y = " + y);
 
-            Bitmap subBmp = bmp.createBitmap(bmp,x,y,512,512);
+            Bitmap subBmp = bmp.createBitmap(bmp,x,y,taille,taille);
             bmp.recycle();
             publishProgress(Statut.GRAYSCALE);
             Log.i("STATUT","changement gs");

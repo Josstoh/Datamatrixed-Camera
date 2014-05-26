@@ -272,7 +272,7 @@ public class ActiviteTraitement extends Activity {
                 double moyCentre = 0;
                 int centreH = (int) (coordsH[i+1] - coordsH[i])/2;
                 int centreV = (int) (coordsV[j+1] - coordsV[j])/2;
-                Log.i("CENTRE","centreH("+coordsH[i+1] +"-"+ coordsH[i]+")="+centreH+" centreV("+coordsV[j+1] +"-"+ coordsV[j]+")="+centreV);
+                //Log.i("CENTRE","centreH("+coordsH[i+1] +"-"+ coordsH[i]+")="+centreH+" centreV("+coordsV[j+1] +"-"+ coordsV[j]+")="+centreV);
                 for(int l = (int)coordsH[i]+centreH -3;l<(int)coordsH[i]+centreH+3;l++)
                 {
                     for(int c = (int)coordsV[j]+centreV -3;c<(int)coordsV[j]+centreV+3;c++)
@@ -281,12 +281,12 @@ public class ActiviteTraitement extends Activity {
                     }
                 }
                 moyCentre/=36;
-                Log.i("CENTRE",moyCentre+"");
+                Log.i("CENTRE["+i+","+j+"]",moyCentre+"");
 
                 double difference = moyCentre - moyFond;
                 double ratio = moyCentre/moyFond;
-                Log.i("DIFFERENCE","-------->"+difference+"<-------------");
-                Log.i("RATIO","-------->"+ratio+"<-------------");
+                Log.i("DIFFERENCE["+i+","+j+"]","-------->"+difference+"<-------------");
+                Log.i("RATIO["+i+","+j+"]","-------->"+ratio+"<-------------");
                 if(ratio < 2.0)
                 {
                     datamatrix[i-1][j-1] = 0;

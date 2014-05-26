@@ -76,6 +76,7 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
                             } else {
                                 x = 0;
                                 y = posY;
+                                // a
                             }
                         }
                     } else {

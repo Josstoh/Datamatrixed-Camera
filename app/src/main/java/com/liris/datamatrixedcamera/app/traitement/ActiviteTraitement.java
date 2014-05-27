@@ -15,6 +15,7 @@ import android.widget.ImageView;
 
 import com.liris.datamatrixedcamera.app.ActiviteCamera;
 import com.liris.datamatrixedcamera.app.R;
+import com.liris.datamatrixedcamera.app.lecture.LectureEtCorrection;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -222,51 +223,58 @@ public class ActiviteTraitement extends Activity {
                         apercu = Bitmap.createBitmap(profil.cols(), profil.rows(),Bitmap.Config.ARGB_8888);
                         Utils.matToBitmap(profil, apercu);
                         img.setImageBitmap(apercu);
-
-
-                        int[][] datamatrix = calculDatamatrix();
-                        for(int i = 0; i<14;i++) {
-                            for (int j = 0; j < 14; j++) {
-                                System.out.print(datamatrix[i][j]);
+                        LectureEtCorrection lec = new LectureEtCorrection();
+                        int[][] datamatrix = new int [16][16];
+                        int seuil =15;
+                        do{
+                            Log.i("Lecture",seuil+"");
+                            datamatrix = calculDatamatrix(seuil);
+                            for(int i = 0; i<16;i++) {
+                                for (int j = 0; j < 16; j++) {
+                                    System.out.print(datamatrix[i][j]);
+                                }
+                                System.out.print("\n");
                             }
-                            System.out.print("\n");
+                            seuil-=1;
                         }
+                        while(lec.lecture(datamatrix) && seuil>0);
+
                     }
 
                 });
 
     }
 
-    private int[][] calculDatamatrix()
+    private int[][] calculDatamatrix(int seuil)
     {
         double[]coordsV = Action.coordsVerticales;
         double[]coordsH = Action.coordsHorizontales;
-        double[][]ndGFond = new double[14][14];
-        int[][]datamatrix = new int[14][14];
+        double[][]ndGFond = new double[16][16];
+        int[][]datamatrix = new int[16][16];
 
-        for(int i = 1; i<15;i++)
+        for(int i = 0; i<16;i++)
         {
-            for(int j = 1; j<15; j++)
+            for(int j = 0; j<16; j++)
             {
                 // Calcul du niveau de gris du fond de chaque case
-                double moyFond=0;
-                int passage = 0;
+                double nvFond=256;
                 int it = (int)coordsV[j]+1;
                 int it2 = (int) coordsH[i]+1;
                 while (it<=coordsV[j+1]-1)
                 {
-                    moyFond = (moyFond + autocseuil.get((int)coordsH[i]+1,it)[0] + autocseuil.get((int)coordsH[i+1]-1,it)[0]);
-                    passage++;
+                    nvFond = ( nvFond < autocseuil.get( (int)coordsH[i]+1,it )[0] ) ? nvFond : autocseuil.get( (int)coordsH[i]+1,it )[0];
+                    nvFond = ( nvFond < autocseuil.get( (int)coordsH[i+1]-1,it)[0] ) ? nvFond : autocseuil.get( (int)coordsH[i+1]-1,it)[0];
+
                     it++;
                 }
                 while (it2<=coordsH[i+1]-1)
                 {
-                    moyFond = (moyFond + autocseuil.get(it2,(int)coordsV[j]+1)[0] + autocseuil.get((int)coordsV[j+1]-1,it2)[0]);
-                    passage++;
+                    nvFond = (nvFond + autocseuil.get(it2,(int)coordsV[j]+1)[0] + autocseuil.get((int)coordsV[j+1]-1,it2)[0]);
+                    nvFond = ( nvFond < autocseuil.get(it2,(int)coordsV[j]+1)[0] ) ? nvFond : autocseuil.get(it2,(int)coordsV[j]+1)[0];
+                    nvFond = ( nvFond < autocseuil.get( (int)coordsV[j+1]-1,it2 )[0] ) ? nvFond : autocseuil.get((int)coordsV[j+1]-1,it2)[0];
                     it2++;
                 }
-                moyFond/=(passage*4);
-                Log.i("FOND", moyFond+"");
+                Log.i("FOND", nvFond+"");
 
                 // Calcul du niveau de gris du centre de chaque case
                 double moyCentre = 0;
@@ -283,16 +291,16 @@ public class ActiviteTraitement extends Activity {
                 moyCentre/=36;
                 Log.i("CENTRE["+i+","+j+"]",moyCentre+"");
 
-                double difference = moyCentre - moyFond;
-                double ratio = moyCentre/moyFond;
+                double difference = moyCentre - nvFond;
+                double ratio = moyCentre/nvFond;
                 Log.i("DIFFERENCE["+i+","+j+"]","-------->"+difference+"<-------------");
-                Log.i("RATIO["+i+","+j+"]","-------->"+ratio+"<-------------");
-                if(ratio < 2.0)
+                //Log.i("RATIO["+i+","+j+"]","-------->"+ratio+"<-------------");
+                if(difference < seuil)
                 {
-                    datamatrix[i-1][j-1] = 0;
+                    datamatrix[i][j] = 0;
                 }
                 else {
-                    datamatrix[i-1][j-1] = 1;
+                    datamatrix[i][j] = 1;
                 }
             }
         }
@@ -351,7 +359,7 @@ public class ActiviteTraitement extends Activity {
         System.out.println("End");
 
 
-        int[][] datamatrix = calculDatamatrix();
+        int[][] datamatrix = calculDatamatrix(50);
         for(int i = 0; i<14;i++) {
             for (int j = 0; j < 14; j++) {
                 System.out.print(datamatrix[i][j]);

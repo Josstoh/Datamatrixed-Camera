@@ -245,7 +245,7 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
                         case MotionEvent.ACTION_MOVE:
                         case MotionEvent.ACTION_UP:
                     }
-                    return true;
+                    return false;
                 }
             });
         ImageButton bPhoto = (ImageButton) findViewById(R.id.bPhoto);
@@ -780,7 +780,8 @@ public class ActiviteCamera extends Activity implements SurfaceHolder.Callback {
             try{
                 Toast.makeText(activity, "PHOTO", 10).show();
                 boolean portrait = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
-                new TacheEnregistrementPhoto(activity,new OnTacheEnregistrementDone(),bMode.isChecked(),portrait,posX,posY).execute(data);
+                Camera.Parameters params = camera.getParameters();
+                new TacheEnregistrementPhoto(activity,new OnTacheEnregistrementDone(),bMode.isChecked(),portrait,posX,posY,params.getPictureSize(),params.getPreviewSize()).execute(data);
                 camera.startPreview();
             }
             catch(Exception e){

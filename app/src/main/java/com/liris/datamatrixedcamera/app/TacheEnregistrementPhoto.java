@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.hardware.Camera;
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -27,8 +28,11 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
     private int posY;
     private int taille;
     private boolean portrait;
+    private Camera.Size taillePhoto;
+    private Camera.Size taillePreview;
 
-    TacheEnregistrementPhoto(Activity activity,ActiviteCamera.OnTacheEnregistrementDone callback,boolean mode,boolean portrait,int x,int y)
+    TacheEnregistrementPhoto(Activity activity,ActiviteCamera.OnTacheEnregistrementDone callback,
+                             boolean mode,boolean portrait,int x,int y, Camera.Size photo, Camera.Size preview)
     {
         this.activity = activity;
         this.callback = callback;
@@ -36,6 +40,8 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
         this.posX = x;
         this.posY = y;
         this.portrait = portrait;
+        this.taillePhoto = photo;
+        this.taillePreview = preview;
     }
 
     @Override
@@ -72,11 +78,10 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
                         } else {
                             if (posY == -3) {
                                 x = 0;
-                                y = 960 - 540;
+                                y = taillePhoto.width - taillePhoto.height;
                             } else {
                                 x = 0;
-                                y = posY;
-                                // a
+                                y = ((taillePhoto.width * posY)/taillePreview.width)-taillePhoto.height/2;
                             }
                         }
                     } else {
@@ -85,10 +90,10 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
                             y = 0;
                         } else {
                             if (posX == -3) {
-                                x = 960 - 540;
+                                x = taillePhoto.width - taillePhoto.height;
                                 y = 0;
                             } else {
-                                x = posX - 270;
+                                x = ((taillePhoto.width * posX)/taillePreview.width)-taillePhoto.height/2;
                                 y = 0;
                             }
                         }

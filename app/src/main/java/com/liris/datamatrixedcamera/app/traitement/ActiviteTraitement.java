@@ -250,6 +250,7 @@ public class ActiviteTraitement extends Activity {
         double[]coordsV = Action.coordsVerticales;
         double[]coordsH = Action.coordsHorizontales;
         double[][]ndGFond = new double[16][16];
+        double[][] ndGCentre = new double[16][16];
         int[][]datamatrix = new int[16][16];
 
         for(int i = 0; i<16;i++)
@@ -291,6 +292,8 @@ public class ActiviteTraitement extends Activity {
                 moyCentre/=36;
                 Log.i("CENTRE["+i+","+j+"]",moyCentre+"");
 
+                ndGFond[i][j] = nvFond;
+                ndGCentre[i][j] = moyCentre;
                 double difference = moyCentre - nvFond;
                 double ratio = moyCentre/nvFond;
                 Log.i("DIFFERENCE["+i+","+j+"]","-------->"+difference+"<-------------");
@@ -303,6 +306,20 @@ public class ActiviteTraitement extends Activity {
                     datamatrix[i][j] = 1;
                 }
             }
+        }
+        Log.i("DATAMATRIX","ndGFond");
+        for(int i = 0; i<16;i++) {
+            for (int j = 0; j < 16; j++) {
+                System.out.print(ndGFond[i][j]);
+            }
+            System.out.print("\n");
+        }
+        Log.i("DATAMATRIX","ndGCentre");
+        for(int i = 0; i<16;i++) {
+            for (int j = 0; j < 16; j++) {
+                System.out.print(ndGCentre[i][j]);
+            }
+            System.out.print("\n");
         }
         return datamatrix;
     }

@@ -310,14 +310,14 @@ public class ActiviteTraitement extends Activity {
         Log.i("DATAMATRIX","ndGFond");
         for(int i = 0; i<16;i++) {
             for (int j = 0; j < 16; j++) {
-                System.out.print(ndGFond[i][j]);
+                System.out.print(ndGFond[i][j]+" ");
             }
             System.out.print("\n");
         }
         Log.i("DATAMATRIX","ndGCentre");
         for(int i = 0; i<16;i++) {
             for (int j = 0; j < 16; j++) {
-                System.out.print(ndGCentre[i][j]);
+                System.out.print(ndGCentre[i][j]+" ");
             }
             System.out.print("\n");
         }

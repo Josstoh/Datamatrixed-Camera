@@ -11,7 +11,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/ivMire"
-        android:layout_gravity="center"
         android:src="@drawable/mire"
         android:maxWidth="5dp"
         android:maxHeight="5dp" />
@@ -36,7 +35,17 @@
         android:layout_height="wrap_content"
         android:text="Traitement"
         android:id="@+id/bTraitement"
+        android:textSize="15dp"
+        android:layout_gravity="center_horizontal|top" />
+
+    <ToggleButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Mode"
+        android:id="@+id/bMode"
         android:layout_gravity="left|bottom"
-        android:textSize="15dp" />
+        android:textOff="Normal"
+        android:textOn="Loupe"
+        android:checked="false" />
 
 </FrameLayout>

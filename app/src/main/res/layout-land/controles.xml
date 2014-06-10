@@ -37,6 +37,17 @@
         android:layout_height="wrap_content"
         android:text="Traitement"
         android:id="@+id/bTraitement"
-        android:layout_gravity="right|top" />
+        android:layout_gravity="center_vertical" />
+
+
+    <ToggleButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Mode"
+        android:id="@+id/bMode"
+        android:layout_gravity="right|top"
+        android:textOff="Normal"
+        android:textOn="Loupe"
+        android:checked="false" />
 
 </FrameLayout>

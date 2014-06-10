@@ -6,8 +6,12 @@ import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.hardware.Camera;
 import android.os.AsyncTask;
 import android.util.Log;
+
+import org.opencv.android.Utils;
+import org.opencv.imgproc.Imgproc;
 
 /**
  * Created by Jocelyn on 28/04/2014.
@@ -18,12 +22,26 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
     private ProgressDialog dialog = null;
     private Activity activity;
     private ActiviteCamera.OnTacheEnregistrementDone callback;
+    private byte[] data;
 
-    TacheEnregistrementPhoto(Activity activity,ActiviteCamera.OnTacheEnregistrementDone callback)
+    private int posX;
+    private int posY;
+    private int taille;
+    private boolean portrait;
+    private Camera.Size taillePhoto;
+    private Camera.Size taillePreview;
+
+    TacheEnregistrementPhoto(Activity activity,ActiviteCamera.OnTacheEnregistrementDone callback,
+                             boolean mode,boolean portrait,int x,int y, Camera.Size photo, Camera.Size preview)
     {
         this.activity = activity;
         this.callback = callback;
-
+        this.taille = mode ? 1024 : 512;
+        this.posX = x;
+        this.posY = y;
+        this.portrait = portrait;
+        this.taillePhoto = photo;
+        this.taillePreview = preview;
     }
 
     @Override
@@ -38,42 +56,68 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
                         cancel(true);
                     }
                 });
-        Log.i("STATUT","création dialog et aff");
-
     }
 
     @Override
     protected Resultat doInBackground(byte[]... data) {
         try{
             publishProgress(Statut.INITIALISATION);
+            this.data = data[0];
             Log.i("STATUT","changement init");
             Bitmap bmp = BitmapFactory.decodeByteArray(data[0], 0, data[0].length);
-            int x = bmp.getWidth() / 2 - 255;
-            int y = bmp.getHeight() / 2 - 255;
+            int x,y;
+            if(ActiviteCamera.bMode.isChecked()) {
+                if (posX == -1) {
+                    x = bmp.getWidth() / 2 - (taille / 2 - 1);
+                    y = bmp.getHeight() / 2 - (taille / 2 - 1);
+                } else {
+                    if (portrait) {
+                        if (posY == -2) {
+                            x = 0;
+                            y = 0;
+                        } else {
+                            if (posY == -3) {
+                                x = 0;
+                                y = taillePhoto.width - taillePhoto.height;
+                            } else {
+                                x = 0;
+                                y = ((taillePhoto.width * posY)/taillePreview.width)-taillePhoto.height/2;
+                            }
+                        }
+                    } else {
+                        if (posX == -2) {
+                            x = 0;
+                            y = 0;
+                        } else {
+                            if (posX == -3) {
+                                x = taillePhoto.width - taillePhoto.height;
+                                y = 0;
+                            } else {
+                                x = ((taillePhoto.width * posX)/taillePreview.width)-taillePhoto.height/2;
+                                y = 0;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                x = bmp.getWidth() / 2 - (taille/2-1);
+                y = bmp.getHeight() / 2 - (taille/2-1);
+            }
+
             Log.i("SubBMP", "bmp h = " + bmp.getHeight() + " bmp w = " + bmp.getWidth() + " x = " + x + " y = " + y);
 
-            Bitmap subBmp = bmp.createBitmap(bmp,x,y,512,512);
+            Bitmap subBmp = bmp.createBitmap(bmp,x,y,taille,taille);
             bmp.recycle();
-            int[] pixels = new int[subBmp.getWidth()*subBmp.getWidth()];
-            subBmp.getPixels(pixels,0,subBmp.getWidth(),0,0,subBmp.getWidth(),subBmp.getHeight());
             publishProgress(Statut.GRAYSCALE);
             Log.i("STATUT","changement gs");
             int c = 0,l = 0;
-            for(int i = 0;i<pixels.length;i++) {
-                c=i%512;
-                l=i/512;
 
-                //Log.w("MAT IMAGE",i+"i " + c + "c " + l + "l");
-                int red = Color.red(pixels[i]);
-                int blue = Color.blue(pixels[i]);
-                int green = Color.green(pixels[i]);
-                float grayscale = (float) (0.21*red + 0.71*green + 0.07*blue);
-                //pixels[i] = grayscale;
+            Utils.bitmapToMat(subBmp, ActiviteCamera.image);
 
-                ActiviteCamera.image.put(l, c, pixels[0]);
-            }
-
-            Log.i("MAT IMAGE", ActiviteCamera.image.get(511,511)[0]+" ");
+            Imgproc.cvtColor(ActiviteCamera.image, ActiviteCamera.image, Imgproc.COLOR_RGB2GRAY);
+            Utils.matToBitmap(ActiviteCamera.image,subBmp);
             ActiviteCamera.subBmp = subBmp;
             publishProgress(Statut.TERMINE);
             Log.i("STATUT","changement terminé");
@@ -102,7 +146,7 @@ public class TacheEnregistrementPhoto extends AsyncTask<byte[],Statut,Resultat> 
                     e.printStackTrace();
                 }
                 dialog.dismiss();
-                callback.afficherDialog();
+                callback.afficherDialog(this.data);
 
                 break;
             case ERREUR:
